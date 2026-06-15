@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>404 — Chris Zhengyu Liu</title>
+<meta name="robots" content="noindex" />
+<link rel="icon" href="favicon.svg" type="image/svg+xml" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400..600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<style>
+  :root{ --paper:#f6f3ea; --ink:#16243a; --ink-2:#38465c; --blue:#2b53c8; --accent:#d6492b; --grid:rgba(43,83,200,.10); }
+  *{box-sizing:border-box;}
+  body{ margin:0; min-height:100vh; display:grid; place-items:center; text-align:center; padding:2rem;
+    background-color:var(--paper);
+    background-image:linear-gradient(var(--grid) 1px,transparent 1px),linear-gradient(90deg,var(--grid) 1px,transparent 1px);
+    background-size:28px 28px; color:var(--ink); font-family:"IBM Plex Mono",monospace; }
+  .code{ font-size:.8rem; letter-spacing:.2em; text-transform:uppercase; color:var(--accent); margin:0 0 1rem; }
+  h1{ font-family:"Fraunces",Georgia,serif; font-weight:500; font-size:clamp(2.2rem,1.5rem+4vw,4rem);
+    line-height:1; letter-spacing:-.02em; margin:0 0 1rem; }
+  p{ color:var(--ink-2); max-width:42ch; margin:0 auto 2rem; line-height:1.6; }
+  a.home{ display:inline-block; font-size:.85rem; padding:.8rem 1.3rem; border:1px solid var(--ink);
+    color:var(--paper); background:var(--ink); text-decoration:none; transition:background .2s, border-color .2s; }
+  a.home:hover{ background:var(--blue); border-color:var(--blue); }
+</style>
+</head>
+<body>
+  <main>
+    <p class="code">Error 404</p>
+    <h1>This state isn't in the chain.</h1>
+    <p>The page you're after doesn't exist. There's no transition that leads here — let's get you back to a node that does.</p>
+    <a class="home" href="./">← Back to home</a>
+  </main>
+</body>
+</html>

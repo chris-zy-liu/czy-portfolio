@@ -1,0 +1,131 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>desmos.py — clipped embed test</title>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400..600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+<script src="https://www.desmos.com/api/v1.11/calculator.js?apiKey=896aa12c7b744870b70aef3f27878099"></script>
+<style>
+  :root{
+    --paper:#f6f3ea; --paper-2:#efebdf; --ink:#16243a; --ink-2:#38465c;
+    --blue:#2b53c8; --blue-soft:#8ea6dd; --accent:#d6492b;
+    --grid-bold:rgba(43,83,200,.16);
+    --mono:"IBM Plex Mono",monospace; --disp:"Fraunces",serif;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--mono);
+    display:flex;flex-direction:column;align-items:center;gap:1.2rem;padding:2.5rem 1.5rem;min-height:100vh;}
+  h1{font-family:var(--disp);font-weight:500;font-size:1.5rem;margin:0;text-align:center;}
+  .note{font-size:.78rem;color:var(--ink-2);max-width:52ch;text-align:center;line-height:1.6;margin:-.4rem 0 .4rem;}
+
+  /* the clipped figure plate */
+  .plate{position:relative;width:min(78vw,440px);aspect-ratio:1/1;border:1.5px solid var(--ink);
+    background:var(--paper);overflow:hidden;
+    box-shadow:18px 22px 0 -8px var(--paper-2),20px 24px 0 -8px var(--grid-bold);}
+  #calc{position:absolute;inset:0;}
+  /* hide Desmos logo + any stray chrome */
+  #calc .dcg-logo,#calc .dcg-overlay-logo,#calc .dcg-bottombar{display:none!important;}
+
+  .reg{position:absolute;width:16px;height:16px;pointer-events:none;z-index:3;}
+  .reg::before,.reg::after{content:"";position:absolute;background:var(--accent);}
+  .reg::before{width:100%;height:1.5px;top:50%;transform:translateY(-50%);}
+  .reg::after{height:100%;width:1.5px;left:50%;transform:translateX(-50%);}
+  .tl{top:8px;left:8px;}.tr{top:8px;right:8px;}.bl{bottom:8px;left:8px;}.br{bottom:8px;right:8px;}
+
+  .hud{position:absolute;left:12px;bottom:10px;z-index:4;font-size:.66rem;color:var(--ink-2);
+    background:rgba(246,243,234,.8);border:1px solid var(--grid-bold);padding:.35rem .5rem;line-height:1.5;}
+  .hud b{color:var(--ink);}
+
+  .controls{display:flex;flex-wrap:wrap;gap:.4rem;justify-content:center;max-width:440px;}
+  .controls button{font-family:var(--mono);font-size:.74rem;padding:.45rem .7rem;cursor:pointer;
+    background:var(--paper);color:var(--ink);border:1px solid var(--ink);transition:.18s;}
+  .controls button:hover{background:var(--ink);color:var(--paper);}
+  .controls .acc:hover{background:var(--accent);border-color:var(--accent);}
+  .cap{font-size:.72rem;color:var(--ink-2);max-width:440px;text-align:center;}
+  .cap b{color:var(--accent);} a{color:var(--blue);}
+</style>
+</head>
+<body>
+  <h1>Clipped <em>desmos.py</em> embed — test</h1>
+  <p class="note">This is your <b>actual</b> compiled <code>mandelbrot.html</code> running live: all Desmos
+  chrome (keypad, expression panel, settings, zoom buttons, logo) hidden, axes/grid off, recolored to the
+  blueprint palette, and driven by the buttons below via the Desmos API.</p>
+
+  <div class="plate">
+    <div id="calc"></div>
+    <span class="reg tl"></span><span class="reg tr"></span><span class="reg bl"></span><span class="reg br"></span>
+    <div class="hud">
+      <div>Re&nbsp;<b id="re">−0.500</b></div>
+      <div>Im&nbsp;<b id="im">+0.000</b></div>
+      <div>zoom&nbsp;<b id="zm">1.0×</b></div>
+    </div>
+  </div>
+
+  <div class="controls">
+    <button data-pan="ux">↑</button>
+    <button data-pan="dx">↓</button>
+    <button data-pan="lx">←</button>
+    <button data-pan="rx">→</button>
+    <button data-z="in" class="acc">zoom +</button>
+    <button data-z="out" class="acc">zoom −</button>
+    <button id="reset">reset</button>
+  </div>
+
+  <p class="cap"><b>Fig. 1</b> Mandelbrot escape map — compiled from <a href="https://github.com/chris-zy-liu/desmos.py">desmos.py</a>.
+  Blocky because it's a real 50×50 Desmos heatmap. Compare with the WebGL hero at <a href="../index.html">index</a>.</p>
+
+<script>
+  // state from your compiled mandelbrot.html, buttons removed (ids 14-20),
+  // heatmap (id 13) recolored to the blueprint palette.
+  const blueprintColor =
+    "\\operatorname{rgb}\\left(200-178\\frac{G_{val}}{N},210-174\\frac{G_{val}}{N},225-167\\frac{G_{val}}{N}\\right)";
+
+  const state = {version:11, graph:{viewport:{xmin:-2, xmax:1, ymin:-1.5, ymax:1.5}}, expressions:{list:[
+    {type:"expression", id:"1", latex:"N=40", slider:{hardMin:true,hardMax:true,min:"10",max:"100",step:"1"}},
+    {type:"expression", id:"2", latex:"c_{x}=-0.5", hidden:true},
+    {type:"expression", id:"3", latex:"c_{y}=0", hidden:true},
+    {type:"expression", id:"4", latex:"z_{m}=1.5", hidden:true},
+    {type:"expression", id:"5", latex:"\\operatorname{step}\\left(z,c\\right)=\\left(\\left(\\left(\\left(z.x\\right)^{2}\\right)-\\left(\\left(z.y\\right)^{2}\\right)\\right)+\\left(c.x\\right),\\left(\\left(\\left(2\\right)\\cdot \\left(z.x\\right)\\right)\\cdot \\left(z.y\\right)\\right)+\\left(c.y\\right)\\right)"},
+    {type:"expression", id:"6", latex:"\\operatorname{magsq}\\left(z\\right)=\\left(\\left(z.x\\right)^{2}\\right)+\\left(\\left(z.y\\right)^{2}\\right)"},
+    {type:"expression", id:"7", latex:"\\operatorname{orbit}\\left(k,c\\right)=\\left\\{k=0:\\left(0,0\\right),\\operatorname{step}\\left(\\operatorname{orbit}\\left(k-1,c\\right),c\\right)\\right\\}"},
+    {type:"expression", id:"8", latex:"\\operatorname{inside}\\left(k,c\\right)=\\left\\{\\operatorname{magsq}\\left(\\operatorname{orbit}\\left(k,c\\right)\\right)<4:1,0\\right\\}"},
+    {type:"expression", id:"9", latex:"\\operatorname{escape}\\left(c\\right)=\\operatorname{total}\\left(\\left[\\operatorname{inside}\\left(k,c\\right)\\operatorname{for}k=\\left[1...N\\right]\\right]\\right)"},
+    {type:"expression", id:"10", latex:"G_{disp}=\\left[\\left(-2+i\\cdot 0.061224489795918366,-1.5+j\\cdot 0.061224489795918366\\right)\\operatorname{for}i=\\left[0...49\\right],j=\\left[0...49\\right]\\right]", hidden:true},
+    {type:"expression", id:"11", latex:"G_{grid}=\\left[\\left(\\left(c_{x}\\right)-\\left(z_{m}\\right)+i\\cdot \\left(\\frac{\\left(\\left(c_{x}\\right)+\\left(z_{m}\\right)\\right)-\\left(\\left(c_{x}\\right)-\\left(z_{m}\\right)\\right)}{49}\\right),\\left(c_{y}\\right)-\\left(z_{m}\\right)+j\\cdot \\left(\\frac{\\left(\\left(c_{y}\\right)+\\left(z_{m}\\right)\\right)-\\left(\\left(c_{y}\\right)-\\left(z_{m}\\right)\\right)}{49}\\right)\\right)\\operatorname{for}i=\\left[0...49\\right],j=\\left[0...49\\right]\\right]", hidden:true},
+    {type:"expression", id:"12", latex:"G_{val}=\\left[\\operatorname{escape}\\left(p\\right)\\operatorname{for}p=G_{grid}\\right]", hidden:true},
+    {type:"expression", id:"13", latex:"G_{disp}", colorLatex:blueprintColor, points:true, lines:false, pointSize:"9"}
+  ]}};
+
+  const calc = Desmos.GraphingCalculator(document.getElementById("calc"), {
+    keypad:false, expressions:false, settingsMenu:false, zoomButtons:false,
+    lockViewport:true, settingsMenu:false, border:false, actions:true,
+    showGrid:false, showXAxis:false, showYAxis:false,
+    xAxisNumbers:false, yAxisNumbers:false, trace:false, pointsOfInterest:false,
+  });
+  calc.setState(state);
+
+  // drive cx/cy/zm with our own controls
+  let cx=-0.5, cy=0.0, zm=1.5;
+  const fmt=(v)=>(v>=0?"+":"−")+Math.abs(v).toFixed(3);
+  function push(){
+    calc.setExpression({id:"2", latex:"c_{x}="+cx});
+    calc.setExpression({id:"3", latex:"c_{y}="+cy});
+    calc.setExpression({id:"4", latex:"z_{m}="+zm});
+    document.getElementById("re").textContent=fmt(cx);
+    document.getElementById("im").textContent=fmt(cy);
+    document.getElementById("zm").textContent=(1.5/zm).toFixed(1)+"×";
+  }
+  document.querySelectorAll("[data-pan]").forEach(b=>b.onclick=()=>{
+    const d=b.dataset.pan, s=zm*0.3;
+    if(d==="ux")cy+=s; if(d==="dx")cy-=s; if(d==="lx")cx-=s; if(d==="rx")cx+=s;
+    push();
+  });
+  document.querySelectorAll("[data-z]").forEach(b=>b.onclick=()=>{
+    zm*= (b.dataset.z==="in") ? 0.5 : 2; push();
+  });
+  document.getElementById("reset").onclick=()=>{cx=-0.5;cy=0;zm=1.5;push();};
+  push();
+</script>
+</body>
+</html>

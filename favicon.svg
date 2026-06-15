@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Chris Liu">
+  <rect x="4" y="4" width="56" height="56" rx="11" fill="#f6f3ea" stroke="#16243a" stroke-width="4"/>
+  <!-- a plotted curve -->
+  <path d="M14 44 C 24 44, 26 22, 36 22 S 50 38, 50 38"
+        fill="none" stroke="#2b53c8" stroke-width="5" stroke-linecap="round"/>
+  <!-- node -->
+  <circle cx="36" cy="22" r="5.5" fill="#d6492b"/>
+</svg>
