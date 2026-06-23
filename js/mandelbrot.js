@@ -52,6 +52,9 @@
       lockViewport: true, border: false, actions: true,
       showGrid: false, showXAxis: false, showYAxis: false,
       xAxisNumbers: false, yAxisNumbers: false, trace: false, pointsOfInterest: false,
+      // autosize defaults on (responsive). Callers that CSS-scale the container can pass false so Desmos
+      // keeps a fixed-resolution canvas and the browser scales it (no per-frame resize churn).
+      autosize: opts.autosize !== false,
     });
     calc.setState(buildState());
 
@@ -101,6 +104,7 @@
       zoomIn() { view.zm = Math.max(view.zm * 0.5, 1.5e-4); push(); },
       zoomOut() { view.zm = Math.min(view.zm * 2, 1.5); push(); },
       reset() { view.cx = HOME.cx; view.cy = HOME.cy; view.zm = HOME.zm; push(); },
+      resize() { calc.resize(); },
       view,
     };
     push();

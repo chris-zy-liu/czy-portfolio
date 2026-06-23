@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Chris Zhengyu Liu — Applied ML &amp; Data Engineering</title>
+<title>The Chain — Chris Zhengyu Liu</title>
 <meta name="description" content="Chris Zhengyu Liu — Industrial & Systems Engineering at Georgia Tech. Applied machine learning, data engineering, and simulation." />
 <meta name="author" content="Chris Zhengyu Liu" />
 <meta name="theme-color" content="#f6f3ea" />
@@ -13,463 +13,1092 @@
 <!-- Open Graph / social -->
 <meta property="og:type" content="website" />
 <meta property="og:title" content="Chris Zhengyu Liu — Applied ML & Data Engineering" />
-<meta property="og:description" content="ISyE at Georgia Tech. Applied ML, data engineering, and simulation — with a live desmos.py Mandelbrot and a Markov-chain site map." />
+<meta property="og:description" content="ISyE at Georgia Tech. Applied ML, data engineering, and simulation — explored as an interactive Markov-chain site map with a live desmos.py Mandelbrot." />
 <meta property="og:url" content="https://chris-zy-liu.github.io/czy-portfolio/" />
 <meta name="twitter:card" content="summary" />
 <meta name="twitter:title" content="Chris Zhengyu Liu — Applied ML & Data Engineering" />
 <meta name="twitter:description" content="ISyE at Georgia Tech. Applied ML, data engineering, and simulation." />
-
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300..700;1,9..144,300..600&family=Newsreader:ital,opsz,wght@0,6..72,300..500;1,6..72,300..400&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
-
-<link rel="stylesheet" href="css/styles.css" />
 <script src="https://www.desmos.com/api/v1.11/calculator.js?apiKey=896aa12c7b744870b70aef3f27878099"></script>
+<style>
+  :root{
+    --paper:#f6f3ea; --paper-2:#efebdf; --ink:#16243a; --ink-2:#38465c; --ink-soft:#6a7689;
+    --blue:#2b53c8; --blue-soft:#8ea6dd; --grid:rgba(43,83,200,.09); --grid-bold:rgba(43,83,200,.14);
+    --accent:#d6492b;
+    --font-display:"Fraunces",Georgia,serif; --font-body:"Newsreader",Georgia,serif;
+    --font-mono:"IBM Plex Mono",ui-monospace,monospace;
+    --ease:cubic-bezier(.22,.61,.36,1);
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0; height:100%; overflow:hidden; overscroll-behavior:none;}   /* no scrollbar — the wheel drives zoom */
+  body{ background:var(--paper); color:var(--ink); font-family:var(--font-body);
+    -webkit-font-smoothing:antialiased; text-rendering:optimizeLegibility; font-size:clamp(1rem,.95rem + .3vw,1.125rem); }
+  a{color:inherit;}
+
+  #spacer{ width:1px; }
+  /* engineering paper drawn in world space (canvas) — zooms with the camera and
+     subdivides like Desmos, so the on-screen line density stays roughly constant. */
+  .grid{ position:fixed; inset:0; z-index:-2; pointer-events:none; background-color:var(--paper); }
+  .vignette{ position:fixed; inset:0; z-index:4; pointer-events:none;
+    background:radial-gradient(150% 120% at 50% 50%, transparent 0 64%, rgba(246,243,234,.24) 88%, var(--paper) 100%); }
+
+  /* chain: a viewport-sized SVG; only its inner group is transformed by the camera */
+  .chainwrap{ position:fixed; inset:0; z-index:1; pointer-events:none;
+    -webkit-user-select:none; user-select:none; }
+  .chainwrap *{ pointer-events:none; }
+  .chainwrap.live{ pointer-events:auto; cursor:none; }   /* the fixed crosshair replaces the cursor; the chain trails the mouse */
+  .chainwrap.live .c-node, .chainwrap.live .c-node *{ pointer-events:auto; }   /* the whole node is clickable (children too), so a click reaches it */
+  .chainwrap.live .c-node{ cursor:pointer; }
+  /* non-scaling-stroke: arc width is screen-px, so it stays bold no matter how far the camera pulls out */
+  .c-orbit{ fill:none; stroke:rgba(43,83,200,.18); stroke-width:1.6; vector-effect:non-scaling-stroke; }
+  .c-edge{ fill:none; stroke:var(--grid); stroke-width:1.2; stroke-linecap:round;
+    vector-effect:non-scaling-stroke; transition:stroke .35s,stroke-width .35s; }       /* side road — faint */
+  .c-edge--main{ stroke:var(--grid-bold); stroke-width:2; }                              /* backbone — always a touch bolder */
+  .c-edge.on{ stroke:var(--blue); stroke-width:2; }                                      /* selected node's side roads */
+  .c-edge--main.on{ stroke:var(--accent); stroke-width:2.6; }                            /* selected node's "next" — boldest, accent (arrowhead scales with this, so kept modest) */
+  .c-arrowhead{ fill:var(--ink-soft); }
+  .c-elab{ font-family:var(--font-mono); fill:var(--ink); opacity:0;
+    paint-order:stroke; stroke:var(--paper); stroke-width:4px; stroke-linejoin:round;
+    vector-effect:non-scaling-stroke; transition:opacity .3s; }                          /* screen-px paper halo: numbers stay legible over the arc; hidden until a node is selected */
+  .c-elab.on{ opacity:1; }
+  .c-elab.main.on{ font-weight:600; }                                                    /* the "next" number — bold ink on the accent arc */
+  .c-node-c{ fill:var(--paper); stroke:var(--ink); stroke-width:1.8;
+    vector-effect:non-scaling-stroke; transition:stroke .25s,stroke-width .25s; }
+  .c-node--hub .c-node-c{ fill:var(--paper-2); stroke:var(--blue); stroke-width:2.5; }
+  .c-node.on .c-node-c{ stroke:var(--accent); stroke-width:3; }
+  .c-node-state{ font-family:var(--font-mono); font-weight:600; fill:var(--ink); pointer-events:none; }
+  .c-node.on .c-node-state{ fill:var(--accent); }
+  .c-node-pi{ font-family:var(--font-mono); fill:var(--ink-soft); pointer-events:none;
+    paint-order:stroke; stroke:var(--paper); stroke-width:3px; stroke-linejoin:round; }
+  .c-agent{ fill:var(--accent); opacity:.8; }   /* small autonomous walkers */
+  /* colophon — a signature floating in the sheet below the chain (no box; a rectangle fights the world grid,
+     so this reads like the chain's own floating π / edge labels). Screen-px paper halo keeps it crisp over the grid. */
+  .c-sig-love,.c-sig-name{ paint-order:stroke; stroke:var(--paper); stroke-width:3.5px;
+    stroke-linejoin:round; vector-effect:non-scaling-stroke; font-family:var(--font-mono); }
+  .c-sig-love{ font-weight:500; fill:var(--accent); letter-spacing:.08em; }
+  .c-sig-name{ font-weight:600; fill:var(--ink); letter-spacing:.14em; }
+
+  /* pages: each its own composited layer, transformed individually (GPU) */
+  .stage{ position:fixed; inset:0; z-index:2; overflow:hidden; pointer-events:none; }
+  .page{ position:absolute; inset:0; width:100vw; height:100vh; transform-origin:50% 50%;
+    will-change:transform,opacity; backface-visibility:hidden; background:var(--paper); }
+  /* the outer states get a solid paper fill so the world-grid stops bleeding through the content;
+     Home keeps the live blueprint grid behind the hero (it IS the signature) */
+  .page--hero{ background:transparent; }
+  .page__wrap{ width:100%; height:100%; max-width:1280px; margin:0 auto;
+    padding:clamp(72px,9.5vh,124px) clamp(40px,5vw,92px) clamp(44px,6.5vh,88px);
+    display:flex; flex-direction:column; justify-content:center; }
+  /* HERO */
+  /* cap the hero footprint to match the linear mainpage (its wrap is 1500px → the same-size title floated in too much space and read small) */
+  .hero{ display:grid; grid-template-columns:minmax(0,1.05fr) minmax(0,.95fr); gap:clamp(1.5rem,4vw,3.5rem); align-items:center; width:100%; max-width:1180px; margin-inline:auto; }
+  .eyebrow{ font-family:var(--font-mono); font-size:.76rem; letter-spacing:.03em; text-transform:uppercase;
+    color:var(--ink-2); margin:0 0 1.5rem; display:inline-flex; align-items:center; gap:.6rem; }
+  .eyebrow .dot{ width:7px; height:7px; border-radius:50%; background:var(--accent); display:inline-block;
+    box-shadow:0 0 0 4px rgba(214,73,43,.16); animation:dotpulse 2.6s ease-in-out infinite; }
+  @keyframes dotpulse{ 50%{ box-shadow:0 0 0 7px rgba(214,73,43,0); } }
+  .hero__title{ font-family:var(--font-display); font-weight:400; line-height:.98; letter-spacing:-.02em;
+    font-size:clamp(2.6rem,1.5rem + 5.4vw,5.4rem); margin:0 0 1.6rem; color:var(--ink); }
+  .hero__title .line{ display:block; }
+  .hero__title em{ font-style:italic; font-weight:500; color:var(--blue); font-variation-settings:"opsz" 144; }
+  .hero__title em::after{ content:""; display:block; height:2px; margin-top:-2px;
+    background:linear-gradient(90deg,var(--accent),transparent 85%); transform:scaleX(0); transform-origin:left;
+    animation:draw .9s var(--ease) forwards; animation-delay:1s; }
+  @keyframes draw{ to{ transform:scaleX(1); } }
+  .hero__lede{ font-size:1.075rem; line-height:1.62; color:var(--ink-2); margin:1.6rem 0 0; max-width:38ch; }
+  .hero__lede a{ color:var(--blue); border-bottom:1px solid var(--blue-soft); transition:color .2s var(--ease),border-color .2s var(--ease); }
+  .hero__lede a:hover{ color:var(--accent); border-color:var(--accent); }
+  /* recruiter path: a direct, explicit action set (resume / github / linkedin / email) */
+  .hero__actions{ margin:1.4rem 0 0; display:flex; flex-wrap:wrap; align-items:baseline; gap:.3rem .65rem;
+    font-family:var(--font-mono); font-size:.9rem; }
+  .hero__actions a{ color:var(--blue); border-bottom:1px solid var(--blue-soft); transition:color .2s var(--ease),border-color .2s var(--ease); }
+  .hero__actions a:hover{ color:var(--accent); border-color:var(--accent); }
+  .hero__actions .sep{ color:var(--ink-soft); border:0; }
+  .hero__stats{ margin:2rem 0 0; display:grid; grid-template-columns:repeat(4,auto); gap:clamp(1rem,3vw,2.4rem);
+    padding-top:1.3rem; max-width:40ch; }
+  .hero__stats div{ display:flex; flex-direction:column; gap:.2rem; }
+  .hero__stats dt{ font-family:var(--font-mono); font-size:.66rem; letter-spacing:.12em; text-transform:uppercase; color:var(--ink-soft); }
+  .hero__stats dd{ margin:0; font-family:var(--font-display); font-size:1.18rem; color:var(--ink); white-space:nowrap; }
+  .hero__stats dd span{ font-size:.85rem; color:var(--ink-soft); }
+  .plot{ margin:0; position:relative; align-self:center; justify-self:end; width:100%; }
+  .plot__frame{ position:relative; aspect-ratio:1/1; width:100%; border:1.5px solid var(--ink);
+    background:var(--paper); overflow:hidden; cursor:crosshair;
+    box-shadow:0 1px 0 rgba(22,36,58,.06), 18px 22px 0 -8px var(--paper-2), 20px 24px 0 -8px var(--grid-bold); }
+  /* the live calc is counter-scaled (JS, autosize off) so Desmos measures a constant size and never re-renders during the fly;
+     it's re-fit on arrival so the dots keep their size. The proxy canvas stands in during the fly. */
+  #calc{ position:absolute; inset:0; transition:opacity .2s ease; will-change:transform; }
+  .plot__shot{ position:absolute; inset:0; width:100%; height:100%; opacity:0; transition:opacity .2s ease;
+    pointer-events:none; image-rendering:auto; }   /* static Mandelbrot proxy that scales with the frame during the fly */
+  #calc .dcg-logo,#calc .dcg-overlay-logo,#calc .dcg-bottombar{ display:none!important; }
+  #calc .dcg-graph-outer{ background:transparent!important; }
+  .reg{ position:absolute; width:16px; height:16px; z-index:2; pointer-events:none; }
+  .reg::before,.reg::after{ content:""; position:absolute; background:var(--accent); }
+  .reg::before{ width:100%; height:1.5px; top:50%; transform:translateY(-50%); }
+  .reg::after{ height:100%; width:1.5px; left:50%; transform:translateX(-50%); }
+  .reg--tl{ top:8px; left:8px; } .reg--tr{ top:8px; right:8px; }
+  .reg--bl{ bottom:8px; left:8px; } .reg--br{ bottom:8px; right:8px; }
+  .plot__hud{ position:absolute; left:14px; bottom:12px; z-index:4; font-family:var(--font-mono);
+    font-size:.68rem; line-height:1.5; color:var(--ink-2); background:rgba(246,243,234,.78);
+    border:1px solid var(--grid-bold); padding:.4rem .55rem; letter-spacing:.02em; }
+  .plot__hud b{ color:var(--ink); font-weight:600; }
+  .plot__hud .hud__row{ display:block; }
+  .plot__hud .hud__zoom b{ color:var(--blue); }
+  .plot__ctrl{ position:absolute; top:12px; right:12px; z-index:4; display:flex; flex-direction:column; gap:4px; }
+  .plot__ctrl button{ width:28px; height:28px; border:1px solid var(--ink); background:rgba(246,243,234,.82);
+    color:var(--ink); font-family:var(--font-mono); font-size:.95rem; cursor:pointer; line-height:1;
+    transition:background .2s var(--ease),color .2s var(--ease); }
+  .plot__ctrl button:hover{ background:var(--ink); color:var(--paper); }
+  .plot__cap{ margin-top:.9rem; font-family:var(--font-mono); font-size:.72rem; color:var(--ink-2); line-height:1.5; }
+  .plot__cap .plot__fig{ color:var(--accent); font-weight:600; margin-right:.35em; }
+  .plot__cap .muted{ color:var(--ink-soft); }
+  .plot__cap a{ color:var(--blue); border-bottom:1px solid var(--blue-soft); }
+  .plot__cap a:hover{ color:var(--accent); border-color:var(--accent); }
+
+  /* WORK PAGES — full editorial spread, not cards */
+  @keyframes pulse{ 0%,100%{opacity:1} 50%{opacity:.25} }
+  /* full-height page: header pins to the top, the body grows to fill the rest and centers within it */
+  .work{ width:100%; height:100%; display:flex; flex-direction:column; justify-content:center; gap:clamp(1.6rem,4.5vh,3.4rem); }
+  .work header{ max-width:70ch; }
+  .work__meta{ font-family:var(--font-mono); font-size:.8rem; letter-spacing:.05em; color:var(--ink-soft);
+    margin:0 0 1rem; display:flex; align-items:center; gap:.85rem; flex-wrap:wrap; }
+  .work__fig{ color:var(--accent); }
+  .work__live{ display:inline-flex; align-items:center; gap:.4rem; color:var(--accent); text-transform:uppercase; letter-spacing:.1em; }
+  .work__live .d{ width:7px; height:7px; border-radius:50%; background:var(--accent); animation:pulse 1.6s infinite; }
+  .work__title{ font-family:var(--font-display); font-weight:340; line-height:1.0; letter-spacing:-.025em;
+    font-size:clamp(2.4rem,1.6rem + 3.4vw,4.6rem); margin:0; }
+  .work__lead{ font-size:clamp(1.12rem,1rem + .5vw,1.5rem); line-height:1.5; color:var(--ink-2); margin:1rem 0 0; max-width:36ch; }
+  .work__lead b{ color:var(--ink); }
+  /* Experience carries two full research entries — far denser than the other work
+     panels. Tighten its header (smaller title, a 2-line lead, less gap) so the body
+     fits one screen instead of overflowing up into the fixed top bar. */
+  .work--research{ gap:clamp(1rem,2.4vh,1.7rem); }
+  .work--research .work__title{ font-size:clamp(2rem,1.4rem + 2vw,3rem); }
+  .work--research .work__lead{ margin-top:.55rem; max-width:56ch; font-size:clamp(1.05rem,1rem + .3vw,1.22rem); }
+  /* ── project pages: title band on top, then description (left) and figure (right) ──
+     three bands (title / body / footer) fill the height; description reads as plain prose. */
+  .proc{ width:100%; height:100%; display:flex; flex-direction:column; justify-content:center; gap:clamp(1.4rem,3.5vh,2.8rem); }
+  .proc__head{ max-width:64ch; }
+  .proc__title{ font-family:var(--font-display); font-weight:340; line-height:1.0; letter-spacing:-.025em;
+    font-size:clamp(2.2rem,1.5rem + 3.2vw,4.4rem); margin:.6rem 0 0; }
+  .proc__state{ font-family:var(--font-mono); font-weight:500; font-size:.38em; letter-spacing:.06em;
+    color:var(--accent); vertical-align:.7em; margin-right:.6em; }
+  .proc__lead{ font-size:clamp(1.1rem,1rem + .46vw,1.46rem); line-height:1.5; color:var(--ink-2); margin:1rem 0 0; max-width:56ch; }
+  .proc__lead b{ color:var(--ink); }
+
+  /* body fills the space between title and footer; figure + spec sheet anchor the right, prose fills the left */
+  .proc__body{ flex:0 1 auto; min-height:0; display:grid; grid-template-columns:1fr minmax(280px,400px);
+    gap:clamp(36px,5vw,84px); align-items:center; }
+  .proc__desc{ display:flex; flex-direction:column; gap:1.1rem; max-width:62ch; }
+  .proc__desc p{ margin:0; line-height:1.62; color:var(--ink-2); font-size:clamp(1.02rem,.96rem + .32vw,1.22rem); }
+  .proc__desc b{ color:var(--ink); font-weight:600; }
+  .proc__desc a{ color:var(--blue); border-bottom:1px solid var(--blue-soft); transition:color .2s var(--ease),border-color .2s var(--ease); }
+  .proc__desc a:hover{ color:var(--accent); border-color:var(--accent); }
+  .proc__note{ font-family:var(--font-mono); font-size:.82rem; line-height:1.55; color:var(--ink-soft);
+    margin:.3rem 0 0; padding-left:1rem; border-left:2px solid var(--grid-bold); }
+  /* right column: figure plate stacked over a mono spec sheet, the pair centered in the body so the figure never floats */
+  .proc__aside{ justify-self:end; width:100%; max-width:400px; display:flex; flex-direction:column; gap:clamp(18px,2.6vh,26px); }
+  .proc__plate{ width:100%; padding:clamp(16px,1.8vw,26px); background:var(--paper-2);
+    border:1px solid rgba(43,83,200,.28); border-radius:4px; box-shadow:0 26px 60px -46px rgba(22,36,58,.55); }
+  .proc__plate .fig{ width:100%; }
+  .proc__specs{ margin:0; display:grid; grid-template-columns:max-content 1fr; gap:.5rem 1.3rem; align-items:baseline;
+    padding-top:clamp(13px,2vh,18px); }
+  .proc__specs dt{ font-family:var(--font-mono); font-size:.66rem; letter-spacing:.1em; text-transform:uppercase; color:var(--ink-soft); }
+  .proc__specs dd{ margin:0; font-family:var(--font-mono); font-size:.8rem; color:var(--ink); line-height:1.4; }
+
+  /* merged project pages: a theme header over a grid of project "specimens" (figure + lead + stage bullets) */
+  .spset{ flex:0 1 auto; min-height:0; display:grid; gap:clamp(26px,3.4vw,56px);
+    grid-template-columns:repeat(auto-fit,minmax(250px,1fr)); align-content:center; }
+  .spec{ display:flex; flex-direction:column; gap:1rem; min-width:0; }
+  .spec__plate{ width:100%; max-width:188px; padding:clamp(11px,1.3vw,17px); background:var(--paper-2);
+    border:1px solid rgba(43,83,200,.28); border-radius:4px; box-shadow:0 22px 50px -42px rgba(22,36,58,.55); }
+  .spec__plate .fig{ width:100%; }
+  .spec__body{ display:flex; flex-direction:column; gap:.6rem; }
+  .spec__meta{ font-family:var(--font-mono); font-size:.72rem; letter-spacing:.04em; color:var(--ink-soft);
+    margin:0; display:flex; align-items:center; gap:.7rem; flex-wrap:wrap; }
+  .spec__meta .work__fig{ color:var(--accent); }
+  .spec__name{ font-family:var(--font-display); font-weight:380; letter-spacing:-.015em; line-height:1.04;
+    font-size:clamp(1.3rem,1.1rem + .85vw,1.85rem); margin:.05rem 0 0; color:var(--ink); }
+  .spec__desc{ font-size:1rem; line-height:1.55; color:var(--ink-2); margin:0; }
+  .spec__desc b{ color:var(--ink); font-weight:600; }
+  .spec__foot{ margin:.35rem 0 0; display:flex; flex-direction:column; gap:.42rem; }
+  .spec__tags{ font-family:var(--font-mono); font-size:.73rem; letter-spacing:.03em; color:var(--ink-soft); }
+  .spec__links{ font-family:var(--font-mono); font-size:.83rem; display:flex; gap:1.1rem; flex-wrap:wrap; align-items:baseline; }
+  .spec__links a{ color:var(--blue); border-bottom:1px solid var(--blue-soft); }
+  .spec__links .work__credit{ color:var(--ink-soft); font-size:.76rem; }
+
+  .proc__foot{ display:flex; justify-content:space-between; align-items:baseline; gap:.8rem 2.5rem; flex-wrap:wrap; }
+  .proc__tags{ font-family:var(--font-mono); font-size:.82rem; letter-spacing:.04em; color:var(--ink-soft); margin:0; }
+  .work__links{ display:flex; flex-wrap:wrap; gap:1.4rem; align-items:baseline; font-family:var(--font-mono); font-size:.92rem; margin:0; }
+  .work__links a{ color:var(--blue); border-bottom:1px solid var(--blue-soft); }
+  .work__credit{ color:var(--ink-soft); font-size:.8rem; }
+
+  .fig{ width:100%; height:auto; display:block; }
+  .fig__grid{ stroke:var(--grid-bold); stroke-width:1; fill:none; }
+  .fig--route .fig__path{ fill:none; stroke:var(--blue); stroke-width:2.6; stroke-linecap:round; }
+  .fig--route .fig__stops circle{ fill:var(--paper); stroke:var(--ink); stroke-width:1.6; }
+  .fig--route .fig__bus{ fill:var(--accent); }
+  .fig--tree .fig__branch line{ stroke:var(--blue); stroke-width:1.8; }
+  .fig--tree .fig__node circle{ fill:var(--paper); stroke:var(--ink); stroke-width:1.6; }
+  .fig--tree .fig__op text{ font-family:var(--font-mono); font-size:11px; fill:var(--ink); text-anchor:middle; }
+  .fig--compile .fig__code rect{ fill:var(--blue-soft); }
+  .fig--compile .fig__arrow{ stroke:var(--ink); stroke-width:1.8; fill:none; }
+  .fig--compile .fig__curve{ stroke:var(--accent); stroke-width:2.4; fill:none; }
+  .fig--compile .fig__axes{ stroke:var(--ink); stroke-width:1.4; fill:none; }
+  .fig--canvas .fig__link{ stroke:var(--blue); stroke-width:1.4; fill:none; stroke-dasharray:3 3; }
+  .fig--canvas .fig__cards rect{ fill:var(--paper); stroke:var(--ink); stroke-width:1.5; }
+  .fig--canvas .fig__cards .fig__sum{ fill:rgba(214,73,43,.12); stroke:var(--accent); }
+  .fig--canvas .fig__dot circle{ fill:var(--accent); }
+  .fig--ar .fig__floor{ fill:rgba(43,83,200,.07); stroke:var(--blue); stroke-width:1.4; }
+  .fig--ar [class^=fig__cube]{ fill:rgba(43,83,200,.1); stroke:var(--ink); stroke-width:1.5; }
+  .fig--ar .fig__cube-top{ fill:rgba(43,83,200,.18); }
+  .fig--ar .fig__scanpts circle{ fill:var(--accent); }
+  .fig--ar .fig__scan{ stroke:var(--accent); stroke-width:1.4; opacity:.7; }
+  /* the desmos.py node: compiler description (with its small figure) left, a LARGE live electric-field demo right.
+     the demo is a real Desmos calc (no SVG) — it scales with the page like the Mandelbrot and only gets a Fig. caption. */
+  .proc__body--demo{ grid-template-columns:minmax(0,.94fr) minmax(0,1.06fr); align-items:center; }
+  .plot--demo{ width:100%; max-width:min(48vh,460px); justify-self:center; align-self:center; }
+  .plot--demo .plot__frame{ cursor:auto; }
+  #efcalc{ position:absolute; inset:0; transition:opacity .2s ease; will-change:transform; }
+  #efcalc .dcg-graph-outer{ background:transparent!important; }
+  #efcalc .dcg-logo,#efcalc .dcg-overlay-logo,#efcalc .dcg-bottombar{ display:none!important; }
+  .efhint{ position:absolute; left:8px; bottom:7px; z-index:3; font-family:var(--font-mono); font-size:.6rem;
+    letter-spacing:.04em; color:var(--ink-soft); background:rgba(246,243,234,.82); border:1px solid var(--grid-bold);
+    padding:.2rem .42rem; pointer-events:none; }
+
+  /* RESEARCH */
+  .sec-head{ margin-bottom:clamp(1.6rem,3vh,2.6rem); }
+  .sec-no{ font-family:var(--font-mono); font-size:.78rem; letter-spacing:.16em; color:var(--accent); text-transform:uppercase; }
+  .sec-title{ font-family:var(--font-display); font-weight:360; font-size:clamp(2rem,1.5rem + 2vw,3rem); margin:.5rem 0 .6rem; letter-spacing:-.02em; }
+  .sec-sub{ color:var(--ink-2); margin:0; max-width:54ch; font-size:1.05rem; }
+  .research{ flex:0 1 auto; display:flex; flex-direction:column; justify-content:center; gap:clamp(1.3rem,3vh,2.2rem); }
+  .rentry{ display:grid; grid-template-columns:.6fr 1.4fr; gap:clamp(20px,3vw,48px); }
+  .rentry__date{ font-family:var(--font-mono); font-size:.78rem; color:var(--accent); letter-spacing:.03em; }
+  .rentry__org{ font-family:var(--font-mono); font-size:.74rem; color:var(--ink-soft); line-height:1.5; display:block; margin-top:.3rem; }
+  .rentry__role{ font-family:var(--font-display); font-weight:420; font-size:clamp(1.2rem,1rem + .7vw,1.6rem); margin:0 0 .5rem; }
+  .rentry__pi{ color:var(--ink-soft); font-size:.85rem; font-family:var(--font-mono); }
+  .rentry__points{ margin:0; padding-left:1.1rem; color:var(--ink-2); }
+  .rentry__points li{ margin-bottom:.4rem; line-height:1.48; }
+  .rentry__points b{ color:var(--ink); }
+
+  /* ABOUT */
+  .about{ flex:0 1 auto; display:grid; grid-template-columns:1.2fr .8fr; gap:clamp(34px,5vw,80px); align-items:center; }
+  .about__bio>p{ font-size:clamp(1.05rem,1rem + .4vw,1.3rem); line-height:1.6; color:var(--ink-2); margin:0 0 1.6rem; }
+  .about__bio b{ color:var(--ink); }
+  .about__poem{ margin:0; border-left:2px solid var(--accent); padding-left:1.2rem; }
+  .about__verse{ font-family:var(--font-display); font-style:italic; font-size:1.25rem; line-height:1.5; margin:0 0 .8rem; color:var(--ink); }
+  .about__poem figcaption{ font-size:.92rem; color:var(--ink-2); line-height:1.55; }
+  .about__contact{ font-family:var(--font-mono); font-size:.86rem; line-height:1.55; color:var(--ink-2);
+    margin:1.5rem 0 0; padding-top:1.2rem; border-top:1px solid var(--grid-bold); }
+  .about__contact a{ color:var(--blue); border-bottom:1px solid var(--blue-soft); }
+  .about__contact a:hover{ color:var(--accent); border-color:var(--accent); }
+  .legend dt{ font-family:var(--font-mono); font-size:.72rem; letter-spacing:.08em; text-transform:uppercase; color:var(--ink-soft); margin-top:1rem; }
+  .legend dd{ margin:.25rem 0 0; color:var(--ink-2); font-size:.98rem; line-height:1.5; }
+
+  /* EDUCATION */
+  .edu{ flex:0 1 auto; display:grid; grid-template-columns:1.1fr .9fr; gap:clamp(34px,5vw,80px); align-items:center; }
+  .edu__date{ font-family:var(--font-mono); font-size:.78rem; color:var(--accent); letter-spacing:.03em; margin:0 0 .4rem; }
+  .edu__school{ font-family:var(--font-display); font-weight:420; font-size:clamp(1.5rem,1.2rem + 1.1vw,2.2rem); margin:0; letter-spacing:-.015em; }
+  .edu__deg{ font-size:1.1rem; color:var(--ink-2); margin:.5rem 0 1.4rem; }
+  .edu__deg b{ color:var(--ink); }
+  .edu__facts{ display:grid; grid-template-columns:max-content 1fr; gap:.55rem 1.4rem; margin:0; align-items:baseline; }
+  .edu__facts dt{ font-family:var(--font-mono); font-size:.66rem; letter-spacing:.1em; text-transform:uppercase; color:var(--ink-soft); }
+  .edu__facts dd{ margin:0; color:var(--ink-2); font-size:.98rem; line-height:1.45; }
+  .edu__kicker{ font-family:var(--font-mono); font-size:.72rem; letter-spacing:.1em; text-transform:uppercase; color:var(--ink-soft); margin:0 0 1rem; }
+  .edu__list{ list-style:none; margin:0; padding:0; columns:2; column-gap:1.6rem; }
+  .edu__list li{ font-size:.96rem; line-height:1.4; color:var(--ink-2); margin-bottom:.55rem; padding-left:.9rem; position:relative; break-inside:avoid; }
+  .edu__list li::before{ content:""; position:absolute; left:0; top:.58em; width:4px; height:4px; background:var(--blue); border-radius:50%; }
+
+  /* SKILLS */
+  .skills{ flex:0 1 auto; display:grid; grid-template-columns:repeat(3,1fr); gap:clamp(22px,3.4vh,40px) clamp(30px,4vw,64px); align-content:center; }
+  .skl{ padding-top:.95rem; }
+  .skl__cat{ font-family:var(--font-mono); font-size:.7rem; letter-spacing:.12em; text-transform:uppercase; color:var(--accent); margin:0 0 .5rem; }
+  .skl__items{ font-family:var(--font-display); font-weight:400; font-size:clamp(1.1rem,1rem + .55vw,1.45rem); line-height:1.3; color:var(--ink); margin:0; letter-spacing:-.01em; }
+  .skl__note{ font-size:.9rem; line-height:1.45; color:var(--ink-soft); margin:.5rem 0 0; }
+
+  /* Markov intro overlay */
+  .mkintro{ position:fixed; left:clamp(34px,5vw,64px); top:19vh; z-index:6; max-width:32ch; pointer-events:none; opacity:0; }
+  .mkintro__no{ font-family:var(--font-mono); font-size:.78rem; letter-spacing:.18em; color:var(--accent); text-transform:uppercase; }
+  .mkintro__title{ font-family:var(--font-display); font-weight:360; font-size:clamp(1.8rem,1.4rem + 1.6vw,2.8rem); letter-spacing:-.02em; line-height:1.05; margin:.6rem 0 .9rem; }
+  .mkintro__sub{ font-family:var(--font-body); font-size:1.05rem; line-height:1.6; color:var(--ink-2); margin:0; }
+  .mkintro__sub b{ color:var(--ink); }
+  .mkpanel{ position:fixed; right:clamp(34px,5vw,64px); top:19vh; z-index:6; width:min(286px,24vw);
+    border-left:1px solid rgba(43,83,200,.22); padding-left:1.4rem; pointer-events:none; opacity:0; }
+  .mkpanel__kicker{ font-family:var(--font-mono); font-size:.64rem; letter-spacing:.14em; text-transform:uppercase; color:var(--ink-soft); margin:0 0 .35rem; }
+  .mkpanel__state{ font-family:var(--font-display); font-weight:500; font-size:1.5rem; line-height:1.05; color:var(--ink); margin:0 0 .25rem; }
+  .mkpanel__pi{ font-family:var(--font-mono); font-size:.72rem; color:var(--blue); margin:0 0 .85rem; }
+  .mkpanel__desc{ color:var(--ink-2); font-size:.95rem; line-height:1.5; margin:0; min-height:4.2em; }
+  .mkpanel__next{ list-style:none; margin:.55rem 0 0; padding:0; display:grid; gap:.34rem; }
+  .mkpanel__next li{ display:flex; justify-content:space-between; gap:1rem; font-family:var(--font-mono);
+    font-size:.8rem; color:var(--ink-2); padding-bottom:.22rem; }
+  .mkpanel__next b{ color:var(--ink); font-weight:600; }
+
+  /* center crosshair — the fixed reticle the chain is steered against; shows only while the mouse is moving at the overview */
+  .crosshair{ position:fixed; left:50%; top:50%; transform:translate(-50%,-50%); z-index:5; pointer-events:none;
+    width:30px; height:30px; opacity:0; transition:opacity .35s var(--ease); }
+  .crosshair::before,.crosshair::after{ content:""; position:absolute; background:var(--ink); }
+  .crosshair::before{ left:50%; top:0; width:1.2px; height:100%; transform:translateX(-50%); }
+  .crosshair::after{ top:50%; left:0; height:1.2px; width:100%; transform:translateY(-50%); }
+
+  /* chrome */
+  .frame span{ position:fixed; z-index:5; width:20px; height:20px; pointer-events:none; }
+  .frame .tl{ top:20px; left:20px; border-top:1.5px solid var(--ink); border-left:1.5px solid var(--ink); }
+  .frame .tr{ top:20px; right:20px; border-top:1.5px solid var(--ink); border-right:1.5px solid var(--ink); }
+  .frame .bl{ bottom:20px; left:20px; border-bottom:1.5px solid var(--ink); border-left:1.5px solid var(--ink); }
+  .frame .br{ bottom:20px; right:20px; border-bottom:1.5px solid var(--ink); border-right:1.5px solid var(--ink); }
+  .topbar{ position:fixed; top:0; left:0; right:0; z-index:6; display:flex; justify-content:space-between; align-items:center;
+    padding:30px clamp(34px,5vw,56px); font-family:var(--font-mono); font-size:.72rem; letter-spacing:.08em; color:var(--ink-2); text-transform:uppercase; pointer-events:none; }
+  .topbar .brand{ font-weight:600; color:var(--ink); letter-spacing:.16em; } .topbar__tag{ color:var(--ink-2); }
+  .readout{ position:fixed; left:50%; top:30px; transform:translateX(-50%); z-index:6; font-family:var(--font-mono); font-size:.72rem; letter-spacing:.1em; color:var(--ink-soft); text-transform:uppercase; pointer-events:none; white-space:nowrap; transition:opacity .45s; }
+  .readout b{ color:var(--ink); } .readout .inf{ color:var(--accent); } .readout .sep{ opacity:.4; margin:0 .55em; }
+  .pager{ position:fixed; left:clamp(34px,5vw,56px); bottom:clamp(30px,4vw,46px); z-index:6; font-family:var(--font-mono); font-size:.68rem; letter-spacing:.1em; color:var(--ink-soft); text-transform:uppercase; pointer-events:none; transition:opacity .45s; }
+  /* normal-site scroll cue shown on a settled page (before the chain is revealed) */
+  .scrollcue{ position:fixed; left:50%; bottom:clamp(26px,5vh,52px); transform:translateX(-50%); z-index:6; opacity:0;
+    display:flex; flex-direction:column; align-items:center; gap:.55rem; pointer-events:none; transition:opacity .5s;
+    font-family:var(--font-mono); font-size:.7rem; letter-spacing:.2em; text-transform:uppercase; color:var(--ink-soft); }
+  .scrollcue__arr{ font-size:1.1rem; color:var(--accent); animation:cuebob 1.8s var(--ease) infinite; }
+  @keyframes cuebob{ 0%,100%{transform:translateY(0)} 50%{transform:translateY(5px)} }
+
+  /* pan/zoom affordance — shows at the overview until the user drags */
+  .panhint{ position:fixed; left:50%; bottom:clamp(66px,12vh,116px); transform:translateX(-50%) translateY(8px);
+    z-index:6; display:flex; align-items:center; gap:.55rem; pointer-events:none; opacity:0;
+    font-family:var(--font-mono); font-size:.72rem; letter-spacing:.06em; color:var(--ink-2);
+    background:rgba(246,243,234,.86); border:1px solid rgba(43,83,200,.3); border-radius:999px;
+    padding:.5rem 1.05rem; box-shadow:0 14px 36px -28px rgba(22,36,58,.6);
+    transition:opacity .5s var(--ease), transform .5s var(--ease); }
+  .panhint::before{ content:"⤢"; color:var(--accent); font-size:.95rem; animation:panbob 1.9s var(--ease) infinite; }
+  .panhint.show{ opacity:1; transform:translateX(-50%) translateY(0); }
+  @keyframes panbob{ 0%,100%{transform:translate(0,0)} 50%{transform:translate(-3px,2px)} }
+
+  @media (max-width:900px){ .hero,.proc__body,.about,.rentry,.edu,.skills{ grid-template-columns:1fr; }
+    .edu__list{ columns:2; }
+    .proc{ height:auto; gap:clamp(20px,4vh,36px); } .proc__body{ align-items:start; gap:clamp(22px,4vh,40px); }
+    .proc__aside{ justify-self:start; max-width:340px; }
+    .spset{ grid-template-columns:1fr; gap:clamp(26px,5vh,40px); } .spec__plate{ max-width:220px; } .mkintro{ display:none; } }
+  @media (max-width:1100px){ .mkpanel{ display:none; } .skills{ grid-template-columns:repeat(2,1fr); } }
+  @media (max-width:700px){
+    .topbar{ padding:28px 40px; justify-content:flex-end; font-size:.62rem; }
+    .topbar .brand{ display:none; }
+    .readout{ top:66px; left:40px; right:40px; transform:none; white-space:normal; line-height:1.35; font-size:.62rem; }
+    .pager{ left:40px; right:40px; max-width:280px; font-size:.62rem; line-height:1.45; }
+  }
+</style>
 </head>
 <body>
+  <canvas class="grid" id="grid" aria-hidden="true"></canvas>
+  <div id="spacer"></div>
 
-  <!-- drafting-paper grid + grain overlays -->
-  <div class="paper-grid" aria-hidden="true"></div>
-  <div class="grain" aria-hidden="true"></div>
+  <svg class="chainwrap" id="chainwrap"><g id="chaing"></g></svg>
+  <div class="stage" id="stage"></div>
+  <div class="vignette" aria-hidden="true"></div>
 
-  <!-- docked Markov-chain minimap (appears after the §00 section; built by markov.js) -->
-  <aside class="minimap" id="minimap" aria-label="Site map — random walk">
-    <span class="minimap__cap"><span>minimap</span><span>you ●</span></span>
+  <div class="mkintro" id="mkintro">
+    <span class="mkintro__no">§ 00</span>
+    <h2 class="mkintro__title">A random walk through the site</h2>
+    <p class="mkintro__sub">This site is a <b>Markov chain</b>. Each node is a section of the portfolio, and the
+      chain shows how the sections connect — each arrow is a transition probability, and the arrows leaving a
+      node sum to 1. The <b>orange edge</b> is the most likely next step; follow it node to node for the
+      recommended tour. <b>π</b> is the long-run share of time a random walk spends in each state.</p>
+  </div>
+
+  <aside class="mkpanel" id="mkpanel" aria-hidden="true">
+    <p class="mkpanel__kicker">Current state</p>
+    <h3 class="mkpanel__state" id="mkpanel-state">s1 · Home</h3>
+    <p class="mkpanel__pi" id="mkpanel-pi">stationary π = 0.0%</p>
+    <p class="mkpanel__desc" id="mkpanel-desc"></p>
+    <p class="mkpanel__kicker">Transition row — P(next | here)</p>
+    <ul class="mkpanel__next" id="mkpanel-next"></ul>
   </aside>
 
-  <header class="nav">
-    <a class="nav__brand" href="#top">
-      <span class="nav__mark">C·L</span>
-      <span class="nav__name">Chris&nbsp;Zhengyu&nbsp;Liu</span>
-    </a>
-    <nav class="nav__links" aria-label="Primary">
-      <a href="#work"><span class="idx">01</span> Work</a>
-      <a href="#research"><span class="idx">02</span> Research</a>
-      <a href="#about"><span class="idx">03</span> About</a>
-      <a class="nav__cta" href="#contact">Get in touch <span aria-hidden="true">↗</span></a>
-    </nav>
-  </header>
+  <div class="crosshair" id="crosshair" aria-hidden="true"></div>
+  <div class="frame" aria-hidden="true"><span class="tl"></span><span class="tr"></span><span class="bl"></span><span class="br"></span></div>
+  <div class="topbar"><span class="brand">Chris&nbsp;Zhengyu&nbsp;Liu</span><span class="topbar__tag">Applied&nbsp;ML · Data&nbsp;Engineering</span></div>
+  <div class="readout" id="readout"></div>
+  <div class="pager" id="pager"><span id="pagerlabel"></span></div>
+  <div class="panhint" id="panhint" aria-hidden="true">move to steer · scroll to zoom</div>
+  <div class="scrollcue" id="scrollcue" aria-hidden="true"><span id="scrollcue-txt"></span><span class="scrollcue__arr">↓</span></div>
 
-  <main id="top">
-    <section class="hero" id="home">
+<script src="js/mandelbrot.js"></script>
+<script>
+(function(){
+  "use strict";
+  const SVGNS="http://www.w3.org/2000/svg";
+  const reduce=window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const SUB=["₀","₁","₂","₃","₄","₅","₆","₇","₈","₉"];
+  const subnum=n=>String(n).split("").map(d=>SUB[+d]).join("");   // 2 → "₂" (used by the state badge + chain labels)
 
-      <!-- LEFT: positioning -->
-      <div class="hero__intro">
-        <p class="eyebrow reveal" style="--d:.05s">
-          <span class="eyebrow__dot"></span>
-          B.S. Industrial &amp; Systems Engineering · Georgia Tech
-        </p>
+  const FIG={
+    route:`<svg class="fig fig--route" viewBox="0 0 200 200" aria-hidden="true"><path class="fig__grid" d="M0 50H200M0 100H200M0 150H200M50 0V200M100 0V200M150 0V200"/><path id="busline" class="fig__path" d="M18 168 C 60 150, 52 96, 96 92 S 150 70, 150 40 S 176 28, 184 22"/><g class="fig__stops"><circle cx="18" cy="168" r="3.5"/><circle cx="96" cy="92" r="3.5"/><circle cx="150" cy="40" r="3.5"/><circle cx="184" cy="22" r="3.5"/></g><circle class="fig__bus" r="4.5"><animateMotion dur="6s" repeatCount="indefinite" rotate="auto"><mpath href="#busline"/></animateMotion></circle></svg>`,
+    tree:`<svg class="fig fig--tree" viewBox="0 0 200 200" aria-hidden="true"><path class="fig__grid" d="M0 50H200M0 100H200M0 150H200M50 0V200M100 0V200M150 0V200"/><g class="fig__branch"><line x1="100" y1="40" x2="60" y2="92"/><line x1="100" y1="40" x2="140" y2="92"/><line x1="60" y1="92" x2="38" y2="150"/><line x1="60" y1="92" x2="84" y2="150"/><line x1="140" y1="92" x2="118" y2="150"/><line x1="140" y1="92" x2="166" y2="150"/></g><g class="fig__node"><circle cx="100" cy="40" r="9"/><circle cx="60" cy="92" r="8"/><circle cx="140" cy="92" r="8"/><circle cx="38" cy="150" r="7"/><circle cx="84" cy="150" r="7"/><circle cx="118" cy="150" r="7"/><circle cx="166" cy="150" r="7"/></g><g class="fig__op"><text x="100" y="44">×</text><text x="60" y="96">+</text><text x="140" y="96">−</text></g></svg>`,
+    compile:`<svg class="fig fig--compile" viewBox="0 0 200 200" aria-hidden="true"><path class="fig__grid" d="M0 50H200M0 100H200M0 150H200M50 0V200M100 0V200M150 0V200"/><g class="fig__code"><rect x="22" y="58" width="56" height="6" rx="2"/><rect x="22" y="72" width="40" height="6" rx="2"/><rect x="22" y="86" width="60" height="6" rx="2"/><rect x="22" y="100" width="34" height="6" rx="2"/><rect x="22" y="114" width="48" height="6" rx="2"/></g><path class="fig__arrow" d="M92 90 H120 M114 84 L122 90 L114 96"/><path class="fig__curve" d="M134 132 C 146 132, 150 70, 162 70 S 178 118, 184 118"/><path class="fig__axes" d="M132 60V134H186"/></svg>`,
+    canvas:`<svg class="fig fig--canvas" viewBox="0 0 200 200" aria-hidden="true"><path class="fig__grid" d="M0 50H200M0 100H200M0 150H200M50 0V200M100 0V200M150 0V200"/><path class="fig__link" d="M74 59 H96 M52 74 V92 Q52 108 78 108 M118 90 V104 Q118 120 132 124 M100 123 H120"/><g class="fig__cards"><rect x="30" y="44" width="44" height="30" rx="3"/><rect x="96" y="60" width="44" height="30" rx="3"/><rect x="56" y="108" width="44" height="30" rx="3"/><rect class="fig__sum" x="120" y="120" width="48" height="32" rx="3"/></g><g class="fig__dot"><circle cx="74" cy="59" r="2.4"/><circle cx="118" cy="90" r="2.4"/><circle cx="100" cy="123" r="2.4"/></g></svg>`,
+    ar:`<svg class="fig fig--ar" viewBox="0 0 200 200" aria-hidden="true"><path class="fig__grid" d="M0 50H200M0 100H200M0 150H200M50 0V200M100 0V200M150 0V200"/><path class="fig__floor" d="M40 134 L100 164 L160 134 L100 104 Z"/><path class="fig__cube-l" d="M66 86 L100 106 L100 148 L66 128 Z"/><path class="fig__cube-r" d="M134 86 L100 106 L100 148 L134 128 Z"/><path class="fig__cube-top" d="M100 66 L134 86 L100 106 L66 86 Z"/><g class="fig__scanpts"><circle cx="100" cy="66" r="2"/><circle cx="66" cy="86" r="2"/><circle cx="134" cy="86" r="2"/><circle cx="100" cy="148" r="2"/></g><line class="fig__scan" x1="48" y1="0" x2="152" y2="0"><animateTransform attributeName="transform" type="translate" values="0 60;0 156;0 60" dur="4.5s" repeatCount="indefinite"/></line></svg>`,
+  };
 
-        <h1 class="hero__title">
-          <span class="line reveal" style="--d:.12s">I build systems</span>
-          <span class="line reveal" style="--d:.20s">that <em>simulate,</em></span>
-          <span class="line reveal" style="--d:.28s"><em>predict</em> &amp; <em>evolve.</em></span>
-        </h1>
-
-        <p class="hero__lede reveal" style="--d:.40s">
-          I work on applied ML, data engineering, and simulation. The figure to
-          the right is rendered by <a href="https://github.com/chris-zy-liu/desmos.py">desmos.py</a> —
-          a Python-to-Desmos compiler I built.
-        </p>
-
-        <div class="hero__actions reveal" style="--d:.50s">
-          <a class="btn btn--primary" href="#work">View the work <span aria-hidden="true">→</span></a>
-          <a class="btn btn--ghost" href="#about">About me</a>
-        </div>
-
-        <dl class="hero__stats reveal" style="--d:.60s">
-          <div><dt>GPA</dt><dd>4.00<span>/4.0</span></dd></div>
-          <div><dt>Focus</dt><dd>OR &amp; Statistics</dd></div>
-          <div><dt>Minor</dt><dd>Computing &amp; AI</dd></div>
-          <div><dt>Based</dt><dd>Atlanta, GA</dd></div>
-        </dl>
-
-        <p class="statetag reveal" style="--d:.70s" data-state="0"></p>
+  // project pages are merged by theme: a theme header over a grid of project "specimens".
+  // each specimen = its figure, a one-line lead, a few stage bullets, tags and links.
+  function specCard(p){
+    const live=p.live?`<span class="work__live"><span class="d"></span>live</span>`:"";
+    return `<section class="spec">
+      <div class="spec__plate">${p.svg}</div>
+      <div class="spec__body">
+        <p class="spec__meta"><span class="work__fig">Fig.&nbsp;${p.fig}</span><span>${p.date}</span>${live}</p>
+        <h3 class="spec__name">${p.name}</h3>
+        <p class="spec__desc">${p.desc}</p>
+        <div class="spec__foot"><span class="spec__tags">${p.tags.join(" · ")}</span>${p.links?`<span class="spec__links">${p.links}</span>`:""}</div>
       </div>
-
-      <!-- RIGHT: the drafted Mandelbrot figure -->
-      <figure class="plot reveal" style="--d:.34s">
-        <div class="plot__frame" id="plot-frame">
-          <div id="calc" class="plot__calc"></div>
-
-          <!-- registration / crop marks -->
-          <span class="reg reg--tl" aria-hidden="true"></span>
-          <span class="reg reg--tr" aria-hidden="true"></span>
-          <span class="reg reg--bl" aria-hidden="true"></span>
-          <span class="reg reg--br" aria-hidden="true"></span>
-
-          <!-- live coordinate readout -->
-          <div class="plot__hud" aria-hidden="true">
-            <span class="hud__row">Re&nbsp;<b id="hud-re">−0.6000</b></span>
-            <span class="hud__row">Im&nbsp;<b id="hud-im">+0.0000</b></span>
-            <span class="hud__row hud__zoom">zoom&nbsp;<b id="hud-zoom">1.0×</b></span>
-          </div>
-
-          <!-- zoom controls -->
-          <div class="plot__ctrl">
-            <button id="zoom-in"  aria-label="Zoom in">+</button>
-            <button id="zoom-out" aria-label="Zoom out">−</button>
-            <button id="zoom-rst" aria-label="Reset view">⤾</button>
-          </div>
+    </section>`;
+  }
+  function groupPage(g){
+    return `<article class="proc proc--group">
+      <header class="proc__head">
+        <p class="work__meta"><span class="work__fig">${g.sec}</span><span>${g.items.length} projects</span></p>
+        <h2 class="proc__title"><span class="proc__state">s${subnum(g.s)}</span>${g.title}</h2>
+        <p class="proc__lead">${g.lead}</p>
+      </header>
+      <div class="spset" data-n="${g.items.length}">${g.items.map(specCard).join("")}</div>
+    </article>`;
+  }
+  // the desmos.py node: compiler (left, with its small figure) beside a LARGE live electric-field demo (right).
+  // the demo is a real embedded Desmos calc — no SVG — captioned only in the footer, like the Mandelbrot at Home.
+  function desmosPage(){
+    return `<article class="proc proc--demo">
+      <header class="proc__head">
+        <p class="work__meta"><span class="work__fig">§&nbsp;04</span><span>made for the love of it</span><span class="work__live"><span class="d"></span>live</span></p>
+        <h2 class="proc__title"><span class="proc__state">s${subnum(4)}</span>Hobby projects</h2>
+      </header>
+      <div class="proc__body proc__body--demo">
+        <div class="proc__desc">
+          <p>Some tools start as small annoyances I cannot stop thinking about. <a href="https://github.com/chris-zy-liu/desmos.py"><b>desmos.py</b></a> is an open-source Python package, published on <b>PyPI</b>, that converts a strict subset of Python into Desmos expressions, state JSON, and self-contained interactive HTML graphs. The Mandelbrot figure in the Home state and the electric-field demo in this state are both generated with it.</p>
+          <p><a href="https://github.com/chris-zy-liu/ibus-stroke-order-input"><b>ibus-stroke-order-input</b></a> is a Linux IBus input method I use for Chinese typing. It maps the five primary strokes of Regular Script onto five keys, letting me type simplified and traditional characters by stroke order.</p>
         </div>
-
-        <figcaption class="plot__cap">
-          <span class="plot__fig">Fig.&nbsp;1</span>
-          Mandelbrot set <span class="muted">— the live</span>
-          <a href="https://github.com/chris-zy-liu/desmos.py">desmos.py</a>
-          <span class="muted">compiler running in your browser, recolored to match this page.
-          Click to recenter, +/− to zoom.</span>
-        </figcaption>
-      </figure>
-
-      <p class="hero__scroll reveal" style="--d:.75s" aria-hidden="true">
-        <span>scroll</span>
-        <span class="hero__scroll-line"></span>
-      </p>
-    </section>
-
-    <!-- ============================ RANDOM WALK ========================= -->
-    <section id="walk" class="section walk">
-      <header class="section__head reveal">
-        <span class="section__no">§ 00</span>
-        <h2 class="section__title">A random walk through the site</h2>
-        <p class="section__sub">
-          This site is a Markov chain. An agent moves between sections by the transition
-          probabilities on each edge; node size is the stationary distribution&nbsp;<b>π</b> —
-          how often you'd land there in the long run. Click a node to send the agent there.
-        </p>
-      </header>
-
-      <div class="walk__stage reveal">
-        <div class="walk__diagram" id="markov" role="img"
-             aria-label="A Markov-chain state diagram of this site's sections."></div>
-
-        <aside class="walk__panel">
-          <p class="walk__kicker">Current state</p>
-          <h3 class="walk__label" id="mk-label">—</h3>
-          <p class="walk__pi" id="mk-pi"></p>
-          <p class="walk__desc" id="mk-desc"></p>
-          <p class="walk__kicker walk__kicker--next">Transition row — P(next | here)</p>
-          <ul class="walk__next" id="mk-next"></ul>
-          <a class="walk__go" id="mk-go" href="#top">Open section <span aria-hidden="true">→</span></a>
-        </aside>
+        <figure class="plot plot--demo">
+          <div class="plot__frame"><div id="efcalc"></div><canvas class="plot__shot" id="ef-shot"></canvas>
+            <span class="reg reg--tl"></span><span class="reg reg--tr"></span><span class="reg reg--bl"></span><span class="reg reg--br"></span>
+            <span class="efhint">drag the charges ⤺</span></div>
+          <figcaption class="plot__cap"><span class="plot__fig">Fig.&nbsp;4</span> Electric field <span class="muted">— generated from the</span>
+            <a href="https://github.com/chris-zy-liu/desmos.py/blob/master/examples/electric_field.py">electric_field.py</a>
+            <span class="muted">example in desmos.py and rendered live on this page. Drag either charge to reshape the field.</span></figcaption>
+        </figure>
       </div>
-    </section>
+      <footer class="proc__foot"><p class="proc__tags">Python · AST / compilers · PyPI · IBus · Linux</p>
+        <p class="work__links"><a href="https://github.com/chris-zy-liu/desmos.py">desmos.py ↗</a><a href="https://pypi.org/project/desmosdotpy/">PyPI ↗</a><a href="https://github.com/chris-zy-liu/ibus-stroke-order-input">ibus-stroke-order ↗</a></p></footer>
+    </article>`;
+  }
+  // ── project specimens (grouped by theme into the merged project nodes below) ──
+  const SPEC={
+    bus:{ name:"GT Bus Arrival Prediction", fig:"2", date:"Apr–May 2026", live:true, svg:FIG.route,
+      desc:`I collected <b>1M+ GPS observations</b> from Georgia Tech's public transit API by polling every 15&nbsp;seconds for about a month. I labeled next-stop arrivals with geospatial buffering, engineered route-progress, headway, speed, traffic, and time features, and trained an <b>XGBoost</b> model on a chronological split. The model now powers a live dashboard for next-stop arrival estimates and historical route behavior.`,
+      tags:["Python","XGBoost","Pandas","Geospatial","Vultr"],
+      links:`<a href="http://108.61.220.216:8080/">Live demo ↗</a>` },
+    sym:{ name:"Evolutionary Symbolic Regression", fig:"3", date:"Aug 2025–May 2026", svg:FIG.tree,
+      desc:`A GPU-accelerated <b>genetic-programming</b> experiment for evolving interpretable trading rules over intraday cryptocurrency data. I built a stack-machine tree evaluator, CUDA&nbsp;/&nbsp;CuPy scoring path, Binance-to-Parquet data pipeline, multi-timeframe feature generation, and out-of-sample backtesting tools for tracking P&amp;L, drawdown, and rolling Sharpe.`,
+      tags:["DEAP","CuPy","CUDA","NumPy","Parquet"],
+      links:`<a href="https://github.com/chris-zy-liu/symbolic-evolution-of-trading-agents">GitHub ↗</a>` },
+    classify:{ name:"Classify — AI classroom platform", fig:"5", date:"Jan 2026–Present", svg:FIG.canvas,
+      desc:`A time-synchronized infinite canvas for analyzing a student's work step by step and returning targeted feedback. I built the <b>Flask</b> backend, <b>Gemini</b> integration, and hierarchical aggregation layer that rolls step feedback into assignment and class-level summaries. The project started at a hackathon, grew from 4&nbsp;→&nbsp;6 contributors, and is now registered as a Georgia LLC.`,
+      tags:["Flask","Gemini API","PostgreSQL","AWS EC2","Vercel"],
+      links:"" },
+    deco:{ name:"DecoAR", fig:"6", date:"Feb 2026 · AR / generative 3D prototype", svg:FIG.ar,
+      desc:`A hackathon prototype for previewing furniture in LiDAR-scanned rooms. I built the Python backend for scraping retailer furniture dimensions and generating 3D assets with <b>Microsoft TRELLIS</b>, which the iOS app placed into an <b>ARKit / RealityKit</b> scene.`,
+      tags:["Python","Microsoft TRELLIS","ARKit","RealityKit","Generative 3D"],
+      links:`<a href="https://www.youtube.com/watch?v=DTVRyiNHafc">Demo ↗</a><span class="work__credit">courtesy of my teammate</span>` },
+  };
+  const GROUPS={
+    predict:{ s:2, sec:"§ 02", title:"Prediction &amp; Search",
+      lead:"Projects that use data to estimate, search, and test decisions under uncertainty.",
+      items:[SPEC.bus, SPEC.sym] },
+    tools:{ s:3, sec:"§ 03", title:"Tools &amp; Applications",
+      lead:"Applications where models, interfaces, and deployment meet.",
+      items:[SPEC.classify, SPEC.deco] },
+  };
 
-    <!-- ============================== WORK ============================== -->
-    <section id="work" class="section">
-      <header class="section__head reveal">
-        <span class="section__no">§ 01</span>
-        <h2 class="section__title">Selected work</h2>
-        <p class="section__sub">Applied ML, plus the data engineering and deployment around it.</p>
-      </header>
-
-      <ol class="projects">
-
-        <!-- 01 Bus ETA -->
-        <li class="project reveal" id="p-bus">
-          <div class="project__media">
-            <svg class="fig fig--route" viewBox="0 0 200 200" aria-hidden="true">
-              <path class="fig__grid" d="M0 50H200M0 100H200M0 150H200M50 0V200M100 0V200M150 0V200"/>
-              <path id="busline" class="fig__path" d="M18 168 C 60 150, 52 96, 96 92 S 150 70, 150 40 S 176 28, 184 22"/>
-              <g class="fig__stops">
-                <circle cx="18" cy="168" r="3.5"/><circle cx="96" cy="92" r="3.5"/>
-                <circle cx="150" cy="40" r="3.5"/><circle cx="184" cy="22" r="3.5"/>
-              </g>
-              <circle class="fig__bus" r="4.5"><animateMotion dur="6s" repeatCount="indefinite" rotate="auto"><mpath href="#busline"/></animateMotion></circle>
-            </svg>
-            <span class="project__live"><span class="dot"></span>live</span>
-          </div>
-          <div class="project__body">
-            <p class="project__meta"><span class="project__fig">Fig. 2</span> Apr–May 2026</p>
-            <h3 class="project__name">GT Bus Arrival Prediction</h3>
-            <p class="project__desc">
-              I polled Georgia Tech's public transit API every 15&nbsp;seconds for about a month to
-              collect <b>1M+ GPS observations</b>, labeled next-stop arrivals with geospatial buffering,
-              and engineered route-progress, headway, speed, traffic, and time features. An <b>XGBoost</b>
-              model trained on a chronological split predicts next-stop arrival, served through a live dashboard.
-            </p>
-            <ul class="tags">
-              <li>Python</li><li>XGBoost</li><li>Pandas</li><li>Geospatial</li><li>Vultr</li>
-            </ul>
-            <p class="project__links">
-              <a href="http://108.61.220.216:8080/">Live demo <span aria-hidden="true">↗</span></a>
-            </p>
-            <p class="statetag" data-state="1"></p>
-          </div>
-        </li>
-
-        <!-- 02 Symbolic Regression -->
-        <li class="project reveal" id="p-symreg">
-          <div class="project__media">
-            <svg class="fig fig--tree" viewBox="0 0 200 200" aria-hidden="true">
-              <path class="fig__grid" d="M0 50H200M0 100H200M0 150H200M50 0V200M100 0V200M150 0V200"/>
-              <g class="fig__branch">
-                <line x1="100" y1="40" x2="60" y2="92"/><line x1="100" y1="40" x2="140" y2="92"/>
-                <line x1="60" y1="92" x2="38" y2="150"/><line x1="60" y1="92" x2="84" y2="150"/>
-                <line x1="140" y1="92" x2="118" y2="150"/><line x1="140" y1="92" x2="166" y2="150"/>
-              </g>
-              <g class="fig__node">
-                <circle cx="100" cy="40" r="9"/><circle cx="60" cy="92" r="8"/><circle cx="140" cy="92" r="8"/>
-                <circle cx="38" cy="150" r="7"/><circle cx="84" cy="150" r="7"/>
-                <circle cx="118" cy="150" r="7"/><circle cx="166" cy="150" r="7"/>
-              </g>
-              <g class="fig__op">
-                <text x="100" y="44">×</text><text x="60" y="96">+</text><text x="140" y="96">−</text>
-              </g>
-            </svg>
-          </div>
-          <div class="project__body">
-            <p class="project__meta"><span class="project__fig">Fig. 3</span> Aug 2025–May 2026</p>
-            <h3 class="project__name">Evolutionary Symbolic Regression</h3>
-            <p class="project__desc">
-              A GPU-accelerated <b>genetic-programming</b> engine (DEAP&nbsp;/&nbsp;CuPy) that evolves
-              tree-based trading strategies for four market-regime specialists. I wrote a custom
-              stack-machine tree evaluator and CUDA kernel to score thousands of programs over millions
-              of 1-minute records, automated Binance ingestion to Parquet, engineered 17+ multi-timeframe
-              indicators, and built out-of-sample backtests tracking P&amp;L, drawdown, and rolling Sharpe.
-            </p>
-            <ul class="tags">
-              <li>DEAP</li><li>CuPy</li><li>CUDA</li><li>NumPy</li><li>Parquet</li>
-            </ul>
-            <p class="project__links">
-              <a href="https://github.com/chris-zy-liu/symbolic-evolution-of-trading-agents">GitHub <span aria-hidden="true">↗</span></a>
-            </p>
-            <p class="statetag" data-state="2"></p>
-          </div>
-        </li>
-
-        <!-- 03 desmos.py -->
-        <li class="project reveal" id="p-desmos">
-          <div class="project__media">
-            <svg class="fig fig--compile" viewBox="0 0 200 200" aria-hidden="true">
-              <path class="fig__grid" d="M0 50H200M0 100H200M0 150H200M50 0V200M100 0V200M150 0V200"/>
-              <g class="fig__code">
-                <rect x="22" y="58" width="56" height="6" rx="2"/><rect x="22" y="72" width="40" height="6" rx="2"/>
-                <rect x="22" y="86" width="60" height="6" rx="2"/><rect x="22" y="100" width="34" height="6" rx="2"/>
-                <rect x="22" y="114" width="48" height="6" rx="2"/>
-              </g>
-              <path class="fig__arrow" d="M92 90 H120 M114 84 L122 90 L114 96"/>
-              <path class="fig__curve" d="M134 132 C 146 132, 150 70, 162 70 S 178 118, 184 118"/>
-              <path class="fig__axes" d="M132 60V134H186"/>
-            </svg>
-          </div>
-          <div class="project__body">
-            <p class="project__meta"><span class="project__fig">Fig. 4</span> May 2026–Present · the figure up top</p>
-            <h3 class="project__name">desmos.py</h3>
-            <p class="project__desc">
-              An open-source Python package (published to <b>PyPI</b>) that compiles a strict subset of the
-              Python AST into Desmos LaTeX&nbsp;/&nbsp;state JSON and emits self-contained interactive HTML
-              graphs — geometry, sliders, buttons, tickers, recursion, and list comprehensions all translate.
-              Unsupported constructs are rejected with line-specific errors. Validated with <b>37 golden-file
-              tests</b> across Python 3.10–3.14; the Mandelbrot explorer at the top of this page is ~40 lines.
-            </p>
-            <ul class="tags">
-              <li>Python</li><li>AST / compilers</li><li>PyPI</li><li>Setuptools</li>
-            </ul>
-            <p class="project__links">
-              <a href="https://github.com/chris-zy-liu/desmos.py">GitHub <span aria-hidden="true">↗</span></a>
-              <a href="https://pypi.org/project/desmosdotpy/">PyPI <span aria-hidden="true">↗</span></a>
-            </p>
-            <p class="statetag" data-state="3"></p>
-          </div>
-        </li>
-
-        <!-- 04 Classify -->
-        <li class="project reveal" id="p-classify">
-          <div class="project__media">
-            <svg class="fig fig--canvas" viewBox="0 0 200 200" aria-hidden="true">
-              <path class="fig__grid" d="M0 50H200M0 100H200M0 150H200M50 0V200M100 0V200M150 0V200"/>
-              <!-- step cards feeding into one aggregated summary card (accent) -->
-              <path class="fig__link" d="M74 59 H96 M52 74 V92 Q52 108 78 108 M118 90 V104 Q118 120 132 124 M100 123 H120"/>
-              <g class="fig__cards">
-                <rect x="30" y="44" width="44" height="30" rx="3"/>
-                <rect x="96" y="60" width="44" height="30" rx="3"/>
-                <rect x="56" y="108" width="44" height="30" rx="3"/>
-                <rect class="fig__sum" x="120" y="120" width="48" height="32" rx="3"/>
-              </g>
-              <g class="fig__dot"><circle cx="74" cy="59" r="2.4"/><circle cx="118" cy="90" r="2.4"/><circle cx="100" cy="123" r="2.4"/></g>
-            </svg>
-          </div>
-          <div class="project__body">
-            <p class="project__meta"><span class="project__fig">Fig. 5</span> Jan 2026–Present</p>
-            <h3 class="project__name">Classify — AI classroom platform</h3>
-            <p class="project__desc">
-              A time-synchronized infinite canvas that analyzes each step of a student's work and returns
-              targeted feedback. I built the <b>Flask</b> backend and <b>Gemini</b> integration, plus
-              hierarchical aggregation that rolls step-level feedback up into assignment and class-performance
-              summaries, persisted in <b>PostgreSQL</b> and deployed on AWS&nbsp;EC2 + Vercel. Started at a
-              hackathon (4&nbsp;→&nbsp;6 contributors) and registered as a Georgia LLC.
-            </p>
-            <ul class="tags">
-              <li>Flask</li><li>Gemini API</li><li>PostgreSQL</li><li>AWS EC2</li><li>Vercel</li>
-            </ul>
-            <p class="statetag" data-state="4"></p>
-          </div>
-        </li>
-
-        <!-- 05 DecoAR -->
-        <li class="project reveal" id="p-decoar">
-          <div class="project__media">
-            <svg class="fig fig--ar" viewBox="0 0 200 200" aria-hidden="true">
-              <path class="fig__grid" d="M0 50H200M0 100H200M0 150H200M50 0V200M100 0V200M150 0V200"/>
-              <path class="fig__floor" d="M40 134 L100 164 L160 134 L100 104 Z"/>
-              <path class="fig__cube-l" d="M66 86 L100 106 L100 148 L66 128 Z"/>
-              <path class="fig__cube-r" d="M134 86 L100 106 L100 148 L134 128 Z"/>
-              <path class="fig__cube-top" d="M100 66 L134 86 L100 106 L66 86 Z"/>
-              <g class="fig__scanpts"><circle cx="100" cy="66" r="2"/><circle cx="66" cy="86" r="2"/><circle cx="134" cy="86" r="2"/><circle cx="100" cy="148" r="2"/></g>
-              <line class="fig__scan" x1="48" y1="0" x2="152" y2="0">
-                <animateTransform attributeName="transform" type="translate" values="0 60;0 156;0 60" dur="4.5s" repeatCount="indefinite"/>
-              </line>
-            </svg>
-          </div>
-          <div class="project__body">
-            <p class="project__meta"><span class="project__fig">Fig. 6</span> AR / generative 3D</p>
-            <h3 class="project__name">DecoAR</h3>
-            <p class="project__desc">
-              A Python backend that scrapes retailer furniture dimensions and generates 3D assets with
-              <b>Microsoft TRELLIS</b>, then drops them into an <b>ARKit / RealityKit</b> prototype for
-              placement in LiDAR-scanned rooms within seconds — preview furniture in your own space before buying.
-            </p>
-            <ul class="tags">
-              <li>Python</li><li>Microsoft TRELLIS</li><li>ARKit</li><li>RealityKit</li><li>Generative 3D</li>
-            </ul>
-            <p class="project__links">
-              <a href="https://www.youtube.com/watch?v=DTVRyiNHafc">Demo <span aria-hidden="true">↗</span></a>
-              <span class="project__credit">courtesy of my amazing teammate</span>
-            </p>
-            <p class="statetag" data-state="5"></p>
-          </div>
-        </li>
-      </ol>
-    </section>
-
-    <!-- ============================ RESEARCH ============================ -->
-    <section id="research" class="section section--alt">
-      <header class="section__head reveal">
-        <span class="section__no">§ 02</span>
-        <h2 class="section__title">Research</h2>
-        <p class="section__sub">Building the software and pipelines that make the research run.</p>
-        <p class="statetag" data-state="6"></p>
-      </header>
-
+  const NODES=[
+    { label:"Home" },
+    { label:"Prediction", html:groupPage(GROUPS.predict) },
+    { label:"Tools & Apps", html:groupPage(GROUPS.tools) },
+    { label:"Hobby projects", html:desmosPage() },
+    { label:"Experience", html:`<div class="work work--research"><header><p class="work__meta"><span class="work__fig">§&nbsp;05</span><span>Experience</span></p>
+      <h2 class="work__title">Experience</h2><p class="work__lead">Research roles where I build the software, data pipelines, and tools that make the work reproducible.</p></header>
       <div class="research">
-        <article class="rentry reveal">
-          <div class="rentry__rail">
-            <span class="rentry__date">Jan 2026 — Present</span>
-            <span class="rentry__org">Georgia Tech · Civil &amp; Environmental Engineering</span>
-          </div>
-          <div class="rentry__body">
-            <h3 class="rentry__role">Programming Research Assistant — Machine Vision</h3>
-            <ul class="rentry__points">
-              <li>Own development of a Flask/REST + JavaScript dashboard for an open-source sidewalk
-                simulation system modeling <b>18 mobility profiles</b>, replacing a notebook-based setup
-                with configurable networks, accessibility cost add-ons, and batch execution.</li>
-              <li>Designed multithreaded job-queue and scenario-staging workflows to run, monitor, and
-                aggregate <b>tens of thousands of simulations</b>, exporting route results as geospatial shapefiles.</li>
-              <li>Designed a relational schema and web tools for pedestrian-asset management and playback;
-                collaborate across a 20-member group and co-author a manuscript planned for TRB submission.</li>
-            </ul>
-          </div>
-        </article>
+      <article class="rentry"><div class="rentry__rail"><span class="rentry__date">Jan 2026 — Present</span><span class="rentry__org">Georgia Tech · Civil &amp; Environmental Engineering</span></div>
+      <div class="rentry__body"><h3 class="rentry__role">Programming Research Assistant — Machine Vision</h3>
+      <ul class="rentry__points"><li>Lead development of a Flask/REST + JavaScript dashboard for an open-source sidewalk simulation system modeling <b>18 mobility profiles</b>, replacing a notebook-based workflow with configurable networks, accessibility cost add-ons, and batch execution.</li>
+      <li>Designed multithreaded job-queue and scenario-staging workflows to run, monitor, and aggregate <b>tens of thousands of simulations</b>, exporting route results as geospatial shapefiles.</li>
+      <li>Designed a relational schema and web tools for pedestrian-asset management and video playback; collaborate across a 20-member research group and co-author a manuscript planned for TRB submission.</li></ul></div></article>
+      <article class="rentry"><div class="rentry__rail"><span class="rentry__date">Jun 2024 — May 2025</span><span class="rentry__org">Georgia Tech · Scheller College of Business</span></div>
+      <div class="rentry__body"><h3 class="rentry__role">Research Assistant — NLP &amp; Data Engineering <span class="rentry__pi">(Dr. Tracey Swartz)</span></h3>
+      <ul class="rentry__points"><li>Built a Python/Linux <b>ETL pipeline</b> for a 17&nbsp;GB corpus spanning <b>10,000+</b> filings, shareholder letters, and executive web profiles using Selenium, PyMuPDF, OCR, XML, regex, Pandas, and multiprocessing.</li>
+      <li>Replaced a manual collection and extraction workflow with a parallelized pipeline that exported research-ready Excel datasets and routed ambiguous records for human review.</li>
+      <li>Engineered <b>TF-IDF</b> features from shareholder communications and wrote protocols used to train and coordinate two interns on web scraping and data processing.</li></ul></div></article></div></div>` },
+    { label:"Education", html:`<div class="work"><header><p class="work__meta"><span class="work__fig">§&nbsp;06</span><span>Education</span></p>
+      <h2 class="work__title">Education</h2><p class="work__lead">Industrial &amp; Systems Engineering at Georgia Tech, focused on operations research, statistics, computing, and applied modeling.</p></header>
+      <div class="edu"><div class="edu__main">
+      <p class="edu__date">2025 — Expected May 2028</p>
+      <h3 class="edu__school">Georgia Institute of Technology</h3>
+      <p class="edu__deg">B.S. Industrial &amp; Systems Engineering · <b>4.00 / 4.0 GPA</b></p>
+      <dl class="edu__facts">
+      <dt>Concentration</dt><dd>Advanced Studies in Operations Research and Statistics</dd>
+      <dt>Minor</dt><dd>Computing &amp; AI</dd>
+      <dt>Honors</dt><dd>Faculty Honors — Fall 2025, Spring 2026</dd>
+      <dt>Looking ahead</dt><dd>Planning to apply to Georgia Tech's BS/MS in Computational Science &amp; Engineering.</dd></dl></div>
+      <div class="edu__course"><p class="edu__kicker">Relevant coursework</p>
+      <ul class="edu__list"><li>Data Structures &amp; Algorithms</li><li>Object-Oriented Programming</li><li>Database Systems</li><li>Probability</li><li>Stochastic Processes</li><li>Linear Algebra</li><li>Simulation Analysis &amp; Design</li><li>Engineering Optimization</li><li>Regression &amp; Forecasting</li><li>Computer Organization &amp; Programming</li></ul></div></div></div>` },
+    { label:"Skills", html:`<div class="work"><header><p class="work__meta"><span class="work__fig">§&nbsp;07</span><span>Skills</span></p>
+      <h2 class="work__title">Skills</h2><p class="work__lead">Tools grouped by how they show up in my work: modeling, data, backend systems, infrastructure, and packaging.</p></header>
+      <div class="skills">
+      <div class="skl"><p class="skl__cat">Languages &amp; query</p><p class="skl__items">Python · Java · SQL</p><p class="skl__note">Python is my primary language for modeling, backends, data pipelines, and tooling.</p></div>
+      <div class="skl"><p class="skl__cat">ML &amp; modeling</p><p class="skl__items">XGBoost · Scikit-learn · DEAP · CuPy</p><p class="skl__note">Gradient boosting, classical ML, and GPU genetic programming.</p></div>
+      <div class="skl"><p class="skl__cat">Data &amp; numerics</p><p class="skl__items">Pandas · NumPy · Geospatial</p><p class="skl__note">ETL, feature engineering, and large tabular workflows.</p></div>
+      <div class="skl"><p class="skl__cat">Backend &amp; storage</p><p class="skl__items">Flask · REST · MySQL · PostgreSQL · Selenium</p><p class="skl__note">APIs, relational schemas, and data collection.</p></div>
+      <div class="skl"><p class="skl__cat">Infrastructure</p><p class="skl__items">Git · Linux · AWS EC2 · GCP Compute</p><p class="skl__note">Deploying and operating small systems end to end.</p></div>
+      <div class="skl"><p class="skl__cat">Packaging</p><p class="skl__items">PyPI · Setuptools</p><p class="skl__note">Packaged and published desmos.py for installation through PyPI.</p></div></div></div>` },
+    { label:"About", html:`<div class="work"><header><p class="work__meta"><span class="work__fig">§&nbsp;08</span><span>About</span></p>
+      <h2 class="work__title">About</h2><p class="work__lead">I like work that spans the full path from raw data to usable systems.</p></header>
+      <div class="about"><div class="about__bio">
+      <p>I'm an <b>Industrial &amp; Systems Engineering</b> student at Georgia Tech. I am most drawn to projects where the boundaries blur between data collection, modeling, simulation, and software engineering.</p>
+      <p>Away from the terminal, I write poetry and work in <b>English and Mandarin</b>.</p>
+      <dl class="legend">
+      <dt>Honors</dt><dd>Faculty Honors (Fall 2025, Spring 2026) · 3rd Place, HackGwinnett 2024</dd>
+      <dt>Writing</dt><dd>Published with the Live Poets Society of New&nbsp;Jersey &amp; Poetry Lab Shanghai</dd></dl>
+      <p class="about__contact">For research, internship, or project conversations: <a href="mailto:czliu@gatech.edu">czliu@gatech.edu</a> · <a href="https://github.com/chris-zy-liu" target="_blank" rel="noopener">GitHub</a> · <a href="https://linkedin.com/in/chris-zhengyu-liu" target="_blank" rel="noopener">LinkedIn</a> · <a href="Chris_Liu_General_Resume.pdf" target="_blank" rel="noopener">Résumé</a></p></div>
+      <figure class="about__poem"><blockquote class="about__verse">The moon calls, then, behind the towers of the City;<br>It beckons, then, for you, and for me.</blockquote>
+      <figcaption>From <cite>The Midnight Hall</cite> — collected at <a href="https://chris-zy-liu.github.io/">积鱼成水 ↗</a>.</figcaption></figure></div></div>` },
+  ];
+  const DESC=[
+    "Home base for the site and its live Desmos-generated figure.",
+    "Prediction, search, and data-driven modeling projects.",
+    "Applications where models, interfaces, and deployment meet.",
+    "Personal tools and experiments built around workflows I wanted.",
+    "Research software, simulation workflows, and data pipelines.",
+    "Academic background in ISyE, operations research, statistics, and computing.",
+    "Technical stack across modeling, data, backend, and infrastructure.",
+    "Writing, languages, and the ideas that shape my work."
+  ];
+  // Each row's dominant transition follows the intended tour 0→1→…→7→0, so the
+  // brightest "next" edge is always the most-likely one; two faint side roads keep the chain rich.
+  const P=[
+    [0.00,0.55,0.00,0.25,0.00,0.00,0.00,0.20],
+    [0.25,0.00,0.55,0.20,0.00,0.00,0.00,0.00],
+    [0.25,0.20,0.00,0.55,0.00,0.00,0.00,0.00],
+    [0.25,0.00,0.20,0.00,0.55,0.00,0.00,0.00],
+    [0.25,0.00,0.00,0.00,0.00,0.55,0.00,0.20],
+    [0.25,0.00,0.00,0.00,0.20,0.00,0.55,0.00],
+    [0.25,0.00,0.00,0.00,0.00,0.20,0.00,0.55],
+    [0.55,0.00,0.00,0.00,0.25,0.00,0.20,0.00],
+  ];
+  const NEXT=[1,2,3,4,5,6,7,0];   // intended "next" per node = each row's argmax (the bold main-line)
+  const N=NODES.length, RN=N-1, DEG=Math.PI/180;
+  const PI=(function(){ let v=new Array(N).fill(1/N); const acc=new Array(N).fill(0);
+    for(let it=0;it<3000;it++){ const nv=new Array(N).fill(0);
+      for(let i=0;i<N;i++){const vi=v[i]; if(!vi)continue; for(let j=0;j<N;j++) nv[j]+=vi*P[i][j];}
+      v=nv; for(let j=0;j<N;j++) acc[j]+=v[j]; }
+    const s=acc.reduce((a,b)=>a+b,0); return acc.map(x=>x/s); })();
+  const el=(n,at)=>{const e=document.createElementNS(SVGNS,n); for(const k in at) e.setAttribute(k,at[k]); return e;};
+  const fmt=p=>p.toFixed(2).replace(/^0\./,".");
+  const pad=(n,w)=>String(n).padStart(w,"0");
+  const clamp=(v,a,b)=>Math.min(Math.max(v,a),b);
+  const lerp=(a,b,t)=>a+(b-a)*t;
+  const easeIO=t=>t<.5?2*t*t:1-Math.pow(-2*t+2,2)/2;
+  const stateText=i=>"s"+subnum(i+1);
+  const HANDOFF_ZOOM=.085;
 
-        <article class="rentry reveal">
-          <div class="rentry__rail">
-            <span class="rentry__date">Jun 2024 — May 2025</span>
-            <span class="rentry__org">Georgia Tech · Scheller College of Business</span>
-          </div>
-          <div class="rentry__body">
-            <h3 class="rentry__role">Research Assistant — NLP &amp; Data Engineering <span class="rentry__pi">(Dr. Tracey Swartz)</span></h3>
-            <ul class="rentry__points">
-              <li>Built a Python/Linux <b>ETL pipeline</b> for a 17&nbsp;GB corpus spanning <b>10,000+</b> filings,
-                shareholder letters, and executive profiles using Selenium, PyMuPDF, OCR, XML, regex, Pandas, and multiprocessing.</li>
-              <li>Replaced a months-long manual workflow with parallelized collection and extraction, exporting
-                research-ready Excel datasets and routing ambiguous records for human review.</li>
-              <li>Engineered <b>TF-IDF</b> features from shareholder communications and authored protocols used to
-                train and coordinate two interns on scraping and data processing.</li>
-            </ul>
-          </div>
-        </article>
-      </div>
-    </section>
+  let vw=0,vh=0,RING=0,CX=0,CY=0,step=0,ZHERO=1,ZNODE=1,ZOVER=.14,NODE_R=[];
+  function metrics(){ vw=innerWidth; vh=innerHeight;
+    // RING huge vs. a page → node↔chain is a deep ~40× zoom (feels like flying in / pulling way out)
+    RING=Math.max(vw,vh)*9; CX=CY=RING*1.3;
+    const overviewFit=vw<700 ? .44 : .656;   // chain fills ~80% of its former footprint (less crowded)
+    step=Math.max(520,vh*0.9); ZOVER=Math.min(vw,vh)*overviewFit/(2*RING); }
 
-    <!-- ============================== ABOUT ============================= -->
-    <section id="about" class="section">
-      <header class="section__head reveal">
-        <span class="section__no">§ 03</span>
-        <h2 class="section__title">About</h2>
-        <p class="statetag" data-state="7"></p>
-      </header>
+  // ---- engineering grid: world-space, Desmos-style adaptive subdivision ----
+  const gridCanvas=document.getElementById("grid"), gctx=gridCanvas&&gridCanvas.getContext("2d");
+  let DPR=1;
+  const GRID_BASE=30, GRID_RATIO=5, GRID_MIN_PX=24;   // a minor line never gets tighter than ~24 screen px
+  function sizeGrid(){ if(!gridCanvas) return; DPR=Math.min(window.devicePixelRatio||1,2);
+    gridCanvas.width=Math.round(vw*DPR); gridCanvas.height=Math.round(vh*DPR);
+    gridCanvas.style.width=vw+"px"; gridCanvas.style.height=vh+"px"; }
+  function gridLines(spacing,cam,color,alpha){
+    if(alpha<=0.004) return;
+    const z=cam.zoom;
+    gctx.globalAlpha=alpha; gctx.strokeStyle=color; gctx.lineWidth=1; gctx.beginPath();
+    const wx0=cam.cx-(vw/2)/z, wx1=cam.cx+(vw/2)/z, wy0=cam.cy-(vh/2)/z, wy1=cam.cy+(vh/2)/z;
+    for(let x=Math.floor(wx0/spacing)*spacing; x<=wx1; x+=spacing){
+      const sx=Math.round((x-cam.cx)*z+vw/2)+0.5; gctx.moveTo(sx,0); gctx.lineTo(sx,vh); }
+    for(let y=Math.floor(wy0/spacing)*spacing; y<=wy1; y+=spacing){
+      const sy=Math.round((y-cam.cy)*z+vh/2)+0.5; gctx.moveTo(0,sy); gctx.lineTo(vw,sy); }
+    gctx.stroke();
+  }
+  function drawGrid(cam){
+    if(!gctx) return;
+    gctx.setTransform(DPR,0,0,DPR,0,0); gctx.clearRect(0,0,vw,vh);
+    const z=cam.zoom;
+    // pick the minor spacing so minor*z lands in [GRID_MIN_PX, GRID_MIN_PX*RATIO) — snaps by powers of RATIO
+    let minor=GRID_BASE, guard=0;
+    while(minor*z<GRID_MIN_PX && guard++<80) minor*=GRID_RATIO;
+    while(minor*z>=GRID_MIN_PX*GRID_RATIO && guard++<160) minor/=GRID_RATIO;
+    const minorPx=minor*z;
+    // finer tier fades in as the minor grid stretches (zooming in) and out as it tightens — no popping
+    const subA=clamp((minorPx-GRID_MIN_PX)/(GRID_MIN_PX*(GRID_RATIO-1)),0,1);
+    const C="43,83,200";
+    gridLines(minor/GRID_RATIO,cam,`rgb(${C})`,0.05*subA);  // sub (fading)
+    gridLines(minor,cam,`rgb(${C})`,0.10);                  // minor
+    gridLines(minor*GRID_RATIO,cam,`rgb(${C})`,0.16);       // major (bold)
+    gctx.globalAlpha=1;
+  }
 
-      <div class="about">
-        <div class="about__col about__bio reveal">
-          <p class="about__lead">
-            I'm an <b>Industrial &amp; Systems Engineering</b> student at Georgia Tech (4.00 GPA),
-            concentrating in Operations Research &amp; Statistics with a minor in Computing&nbsp;&amp;&nbsp;AI.
-            I like problems that span a whole data system — collecting the data, modeling it, and
-            shipping something people can use.
-          </p>
+  // drag-pan offset (sheet units), applied to the camera only while the chain is in view
+  let panX=0, panY=0;
 
-          <figure class="about__poem">
-            <span class="about__figmark">Fig. ∞</span>
-            <blockquote class="about__verse">
-              The moon calls, then, behind the towers of the City;<br>
-              It beckons, then, for you, and for me.
-            </blockquote>
-            <figcaption>
-              From <cite>The Midnight Hall</cite>. I also write poetry — published with the
-              <b>Live Poets Society of New&nbsp;Jersey</b> (Winter 2025, Topical Winner) and
-              <b>Poetry Lab Shanghai</b>, and collected at
-              <a href="https://chris-zy-liu.github.io/">积鱼成水 <span aria-hidden="true">↗</span></a>.
-              Native English &amp; Mandarin.
-            </figcaption>
-          </figure>
+  const ringAngle=k=>(k-1)*(360/RN);
+  function dotCenter(i){ if(i===0) return [CX,CY]; const a=ringAngle(i)*DEG; return [CX+Math.sin(a)*RING,CY-Math.cos(a)*RING]; }
+  function nodeRadius(){ return 25/Math.max(ZOVER,.001); }   // ~25 screen-px radius — smaller, less crowded
+  function edgeGeom(a,b){
+    const [ax,ay]=dotCenter(a),[bx,by]=dotCenter(b);
+    const dx=bx-ax,dy=by-ay,d=Math.hypot(dx,dy)||1,ux=dx/d,uy=dy/d;
+    const ra=NODE_R[a]||nodeRadius(a), rb=NODE_R[b]||nodeRadius(b);
+    const sx=ax+ux*(ra+6/Math.max(ZOVER,.001)), sy=ay+uy*(ra+6/Math.max(ZOVER,.001));
+    const ex=bx-ux*(rb+15/Math.max(ZOVER,.001)), ey=by-uy*(rb+15/Math.max(ZOVER,.001));
+    const bow=d*((a===0||b===0) ? .12 : .16);
+    const mx=(sx+ex)/2-uy*bow,my=(sy+ey)/2+ux*bow;
+    const t=.34,m=1-t;
+    return {sx,sy,mx,my,ex,ey,lx:m*m*sx+2*m*t*mx+t*t*ex,ly:m*m*sy+2*m*t*my+t*t*ey};
+  }
+
+  // ---- build chain (in sheet coords; group is transformed each frame) ----
+  const chainwrap=document.getElementById("chainwrap"), chaing=document.getElementById("chaing");
+  let EDGES=[],ELABS=[],CARDS=[];
+  function buildChain(){
+    chainwrap.setAttribute("viewBox",`0 0 ${vw} ${vh}`); chainwrap.setAttribute("width",vw); chainwrap.setAttribute("height",vh);
+    NODE_R=Array.from({length:N},(_,i)=>nodeRadius(i));
+    chaing.innerHTML="";
+    const defs=el("defs",{}), marker=el("marker",{id:"c-arrow",viewBox:"0 0 10 10",refX:"8",refY:"5",markerWidth:"4",markerHeight:"4",orient:"auto"});
+    marker.appendChild(el("path",{d:"M0 0 L10 5 L0 10 z",class:"c-arrowhead"})); defs.appendChild(marker); chaing.appendChild(defs);
+    chaing.appendChild(el("circle",{class:"c-orbit",cx:CX,cy:CY,r:RING}));
+    EDGES=[]; ELABS=[];
+    for(let a=0;a<N;a++)for(let b=0;b<N;b++){ if(P[a][b]<=0)continue;
+      const main=(b===NEXT[a]), g=edgeGeom(a,b);
+      const path=el("path",{class:"c-edge"+(main?" c-edge--main":""),"marker-end":"url(#c-arrow)",d:`M${g.sx.toFixed(1)} ${g.sy.toFixed(1)} Q${g.mx.toFixed(1)} ${g.my.toFixed(1)} ${g.ex.toFixed(1)} ${g.ey.toFixed(1)}`});
+      chaing.appendChild(path); EDGES.push({a,b,main,path});
+      const lab=el("text",{class:"c-elab"+(main?" main":""),"text-anchor":"middle","font-size":Math.round(13/Math.max(ZOVER,.001)),x:g.lx.toFixed(1),y:g.ly.toFixed(1)});
+      lab.textContent=fmt(P[a][b]); chaing.appendChild(lab); ELABS.push({a,b,main,lab});
+    }
+    CARDS=[];
+    for(let i=0;i<N;i++){ const [cx,cy]=dotCenter(i), r=NODE_R[i];
+      const g=el("g",{class:"c-node"+(i===0?" c-node--hub":"")});
+      g.innerHTML=
+        `<circle class="c-node-c" cx="${cx.toFixed(1)}" cy="${cy.toFixed(1)}" r="${r.toFixed(1)}"/>`+
+        `<text class="c-node-state" x="${cx.toFixed(1)}" y="${(cy+4/Math.max(ZOVER,.001)).toFixed(1)}" text-anchor="middle" font-size="${Math.round(12/Math.max(ZOVER,.001))}">${stateText(i)}</text>`+
+        `<text class="c-node-pi" x="${cx.toFixed(1)}" y="${(cy+r+11/Math.max(ZOVER,.001)).toFixed(1)}" text-anchor="middle" font-size="${Math.round(7.5/Math.max(ZOVER,.001))}">π ${(PI[i]*100).toFixed(0)}%</text>`;
+      g.addEventListener("click",()=>centerOnNode(i));   // clicking a node recenters the camera on it
+      chaing.appendChild(g); CARDS.push(g);
+    }
+    addSignature();                                       // floating colophon just beyond the ring
+    AG.length=0;                                          // a swarm of small autonomous walkers
+    for(let k=0;k<N_AGENTS;k++){
+      const a={ el:el("circle",{class:"c-agent",r:(RING*0.008).toFixed(1)}),
+        cur:Math.floor(Math.random()*N), next:0, moving:false, t:0, dur:BASE_DUR,
+        dwell:Math.random()*DWELL_A, speedMul:0.85+Math.random()*0.3 };   // desync dwell; pace is per-edge-length, lightly varied
+      const c=dotCenter(a.cur); a.el.setAttribute("cx",c[0]); a.el.setAttribute("cy",c[1]);
+      chaing.appendChild(a.el); AG.push(a);
+    }
+  }
+
+  // ── colophon: a signature floating in the sheet below the chain. No box — a rectangle invites a grid
+  // comparison the freely-placed chain never satisfies; plain text reads like the chain's own π / edge labels.
+  // Centered on the hub, out in the explorable margin (pan down past the bottom nodes to find it). Sized in
+  // screen-px via 1/ZOVER so it stays constant, with a paper halo so it stays legible over the grid.
+  function addSignature(){
+    const s=1/Math.max(ZOVER,.001), cx=CX, y=CY+RING*1.7, fz=n=>Math.round(n*s);
+    const g=el("g",{class:"c-sig"});
+    g.innerHTML=
+      `<text class="c-sig-love" x="${cx.toFixed(1)}" y="${y.toFixed(1)}" text-anchor="middle" font-size="${fz(20)}">made with love</text>`+
+      `<text class="c-sig-name" x="${cx.toFixed(1)}" y="${(y+34*s).toFixed(1)}" text-anchor="middle" font-size="${fz(11)}">CHRIS ZHENGYU LIU · 2026</text>`;
+    chaing.appendChild(g);
+  }
+
+  // ---- pages ----
+  const stage=document.getElementById("stage");
+  const PAGES=[]; let heroApi=null, heroMounted=false;
+  function buildPages(){
+    NODES.forEach((n,i)=>{
+      const page=document.createElement("section"); page.className=i===0?"page page--hero":"page";
+      if(i===0){
+        page.innerHTML=`<div class="page__wrap"><div class="hero">
+        <div class="hero__intro">
+          <p class="eyebrow"><span class="dot"></span> <span class="work__fig">§&nbsp;01</span> · B.S. Industrial &amp; Systems Engineering · Georgia Tech</p>
+          <h1 class="hero__title"><span class="line">I build systems</span><span class="line">that <em>simulate,</em></span><span class="line"><em>predict,</em> and <em>evolve.</em></span></h1>
+          <p class="hero__lede">I work across applied machine learning, data engineering, and simulation. My projects usually start with messy data or a modeling problem and end as software someone can run. The interactive figures on this site are generated with
+            <a href="https://github.com/chris-zy-liu/desmos.py">desmos.py</a>, a Python package I built for creating Desmos graphs programmatically.</p>
+          <p class="hero__actions"><a href="Chris_Liu_General_Resume.pdf" target="_blank" rel="noopener">Résumé&nbsp;↗</a><span class="sep">·</span><a href="https://github.com/chris-zy-liu" target="_blank" rel="noopener">GitHub&nbsp;↗</a><span class="sep">·</span><a href="https://linkedin.com/in/chris-zhengyu-liu" target="_blank" rel="noopener">LinkedIn&nbsp;↗</a><span class="sep">·</span><a href="mailto:czliu@gatech.edu">Email</a></p>
+          <dl class="hero__stats"><div><dt>GPA</dt><dd>4.00<span>/4.0</span></dd></div><div><dt>Focus</dt><dd>OR &amp; Statistics</dd></div><div><dt>Minor</dt><dd>Computing &amp; AI</dd></div><div><dt>Based</dt><dd>Atlanta, GA</dd></div></dl>
         </div>
+        <figure class="plot"><div class="plot__frame"><div id="calc"></div><canvas class="plot__shot" id="plot-shot"></canvas>
+          <span class="reg reg--tl"></span><span class="reg reg--tr"></span><span class="reg reg--bl"></span><span class="reg reg--br"></span>
+          <div class="plot__hud"><span class="hud__row">Re <b id="hud-re">−0.500</b></span><span class="hud__row">Im <b id="hud-im">+0.000</b></span><span class="hud__row hud__zoom">zoom <b id="hud-z">1.0×</b></span></div>
+          <div class="plot__ctrl"><button id="z-in" aria-label="Zoom in">+</button><button id="z-out" aria-label="Zoom out">−</button><button id="z-rst" aria-label="Reset">⤾</button></div></div>
+          <figcaption class="plot__cap"><span class="plot__fig">Fig.&nbsp;1</span> Mandelbrot set <span class="muted">— generated by</span>
+            <a href="https://github.com/chris-zy-liu/desmos.py">desmos.py</a> <span class="muted">and rendered live in the browser. Click to recenter; use +/− to zoom.</span></figcaption></figure>
+        </div></div>`;
+      } else {
+        page.innerHTML=`<div class="page__wrap">${n.html}</div>`;
+      }
+      stage.appendChild(page); PAGES.push(page);
+    });
+  }
+  function mountHero(){ if(heroMounted||typeof Desmos==="undefined"||!window.MandelbrotGraph) return;
+    const elc=document.getElementById("calc"); if(!elc) return;
+    calcEl=elc; shotEl=document.getElementById("plot-shot");
+    const re=document.getElementById("hud-re"),im=document.getElementById("hud-im"),z=document.getElementById("hud-z");
+    heroApi=window.MandelbrotGraph.mount({el:elc, autosize:false,
+      onHover:(a,b)=>{ if(re){re.textContent=(a>=0?"+":"−")+Math.abs(a).toFixed(3); im.textContent=(b>=0?"+":"−")+Math.abs(b).toFixed(3);} },
+      onView:(a,b,zz)=>{ if(z) z.textContent=zz.toFixed(1)+"×"; drawProxy(); }});   // redraw proxy when the view recenters
+    heroMounted=!!heroApi;
+    const bind=(id,fn)=>{ const e=document.getElementById(id); if(e) e.addEventListener("click",ev=>{ev.stopPropagation(); fn();}); };
+    if(heroApi){ bind("z-in",()=>heroApi.zoomIn()); bind("z-out",()=>heroApi.zoomOut()); bind("z-rst",()=>heroApi.reset());
+      requestAnimationFrame(()=>{ if(heroApi.resize) heroApi.resize(); }); }
+    drawProxy();
+  }
 
-        <div class="about__col about__legend reveal">
-          <dl class="legend">
-            <dt>Languages</dt>
-            <dd>Python · Java · SQL</dd>
-            <dt>ML &amp; Data</dt>
-            <dd>XGBoost · Scikit-learn · DEAP · CuPy · Pandas · NumPy</dd>
-            <dt>Backend &amp; Tools</dt>
-            <dd>Flask · REST · MySQL · PostgreSQL · Selenium · Git · Linux · AWS EC2 · GCP</dd>
-            <dt>Coursework</dt>
-            <dd>Data Structures &amp; Algorithms · Database Systems · Probability · Stochastic Processes · Linear Algebra</dd>
-            <dt>Honors</dt>
-            <dd>Faculty Honors (Fall 2025, Spring 2026) · 3rd Place, HackGwinnett 2024</dd>
-          </dl>
-        </div>
-      </div>
-    </section>
+  // ---- live electric-field demo (the real desmos.py example, recolored to the page) ----
+  let efApi=null, efMounted=false, efSettled2=false;
+  let efCalcEl=null, efShotEl=null, efProxyReady=false, efShotShown=false;
+  const efHelpers=[], EFP1={x:-1,y:0}, EFP2={x:1,y:0};   // charge positions, kept live via Desmos helper expressions
+  function efState(){ return { version:11,
+    graph:{ viewport:{ xmin:-3.5, xmax:3.5, ymin:-2.5, ymax:2.5 } },
+    expressions:{ list:[
+      { type:"expression", id:"1", latex:"P_{1}=\\left(-1,0\\right)", color:"#d6492b", label:"+1", showLabel:true, dragMode:"XY", pointSize:"18" },
+      { type:"expression", id:"2", latex:"P_{2}=\\left(1,0\\right)", color:"#2b53c8", label:"-1", showLabel:true, dragMode:"XY", pointSize:"18" },
+      { type:"expression", id:"3", latex:"\\operatorname{Exfrom}\\left(p,q,s_{rc}\\right)=\\frac{\\left(q\\right)\\cdot \\left(\\left(p.x\\right)-\\left(s_{rc}.x\\right)\\right)}{\\left(\\left(\\left(\\left(\\left(p.x\\right)-\\left(s_{rc}.x\\right)\\right)^{2}\\right)+\\left(\\left(\\left(p.y\\right)-\\left(s_{rc}.y\\right)\\right)^{2}\\right)\\right)+\\left(0.02\\right)\\right)^{1.5}}" },
+      { type:"expression", id:"4", latex:"\\operatorname{Eyfrom}\\left(p,q,s_{rc}\\right)=\\frac{\\left(q\\right)\\cdot \\left(\\left(p.y\\right)-\\left(s_{rc}.y\\right)\\right)}{\\left(\\left(\\left(\\left(\\left(p.x\\right)-\\left(s_{rc}.x\\right)\\right)^{2}\\right)+\\left(\\left(\\left(p.y\\right)-\\left(s_{rc}.y\\right)\\right)^{2}\\right)\\right)+\\left(0.02\\right)\\right)^{1.5}}" },
+      { type:"expression", id:"5", latex:"\\operatorname{Ex}\\left(p\\right)=\\left(\\operatorname{Exfrom}\\left(p,1,P_{1}\\right)\\right)+\\left(\\operatorname{Exfrom}\\left(p,-\\left(1\\right),P_{2}\\right)\\right)" },
+      { type:"expression", id:"6", latex:"\\operatorname{Ey}\\left(p\\right)=\\left(\\operatorname{Eyfrom}\\left(p,1,P_{1}\\right)\\right)+\\left(\\operatorname{Eyfrom}\\left(p,-\\left(1\\right),P_{2}\\right)\\right)" },
+      { type:"expression", id:"7", latex:"\\operatorname{fmag}\\left(p\\right)=\\sqrt{\\left(\\operatorname{Ex}\\left(p\\right)\\right)^{2}+\\left(\\operatorname{Ey}\\left(p\\right)\\right)^{2}+0.001}" },
+      { type:"expression", id:"8", latex:"\\operatorname{ftip}\\left(p\\right)=\\left(p.x+0.25\\cdot \\frac{\\operatorname{Ex}\\left(p\\right)}{\\operatorname{fmag}\\left(p\\right)},p.y+0.25\\cdot \\frac{\\operatorname{Ey}\\left(p\\right)}{\\operatorname{fmag}\\left(p\\right)}\\right)" },
+      { type:"expression", id:"9", latex:"\\operatorname{fwL}\\left(p\\right)=\\left(\\operatorname{ftip}\\left(p\\right).x-0.08\\cdot \\frac{\\operatorname{Ex}\\left(p\\right)}{\\operatorname{fmag}\\left(p\\right)}-0.04\\cdot \\frac{\\operatorname{Ey}\\left(p\\right)}{\\operatorname{fmag}\\left(p\\right)},\\operatorname{ftip}\\left(p\\right).y-0.08\\cdot \\frac{\\operatorname{Ey}\\left(p\\right)}{\\operatorname{fmag}\\left(p\\right)}+0.04\\cdot \\frac{\\operatorname{Ex}\\left(p\\right)}{\\operatorname{fmag}\\left(p\\right)}\\right)" },
+      { type:"expression", id:"10", latex:"\\operatorname{fwR}\\left(p\\right)=\\left(\\operatorname{ftip}\\left(p\\right).x-0.08\\cdot \\frac{\\operatorname{Ex}\\left(p\\right)}{\\operatorname{fmag}\\left(p\\right)}+0.04\\cdot \\frac{\\operatorname{Ey}\\left(p\\right)}{\\operatorname{fmag}\\left(p\\right)},\\operatorname{ftip}\\left(p\\right).y-0.08\\cdot \\frac{\\operatorname{Ey}\\left(p\\right)}{\\operatorname{fmag}\\left(p\\right)}-0.04\\cdot \\frac{\\operatorname{Ex}\\left(p\\right)}{\\operatorname{fmag}\\left(p\\right)}\\right)" },
+      { type:"expression", id:"11", latex:"f_{G}=\\left[\\left(i,j\\right)\\operatorname{for}i=\\left[-3,-2.5,...,3\\right],j=\\left[-2,-1.5,...,2\\right]\\right]", hidden:true },
+      { type:"expression", id:"12", latex:"f_{T}=\\left[\\operatorname{ftip}\\left(p\\right)\\operatorname{for}p=f_{G}\\right]", hidden:true },
+      { type:"expression", id:"13", latex:"f_{L}=\\left[\\operatorname{fwL}\\left(p\\right)\\operatorname{for}p=f_{G}\\right]", hidden:true },
+      { type:"expression", id:"14", latex:"f_{R}=\\left[\\operatorname{fwR}\\left(p\\right)\\operatorname{for}p=f_{G}\\right]", hidden:true },
+      { type:"expression", id:"15", latex:"\\operatorname{polygon}\\left(f_{G},f_{T},f_{L},f_{T},f_{R}\\right)", color:"#16243a", lineWidth:"1.4" }
+    ] } }; }
+  function mountEfield(){
+    if(efMounted||typeof Desmos==="undefined") return;
+    const elc=document.getElementById("efcalc"); if(!elc) return;
+    efCalcEl=elc; efShotEl=document.getElementById("ef-shot");
+    efApi=Desmos.GraphingCalculator(elc,{ keypad:false, expressions:false, settingsMenu:false, zoomButtons:false,
+      lockViewport:true, border:false, actions:true, showGrid:false, showXAxis:false, showYAxis:false,
+      xAxisNumbers:false, yAxisNumbers:false, trace:false, pointsOfInterest:false, autosize:false });
+    efApi.setState(efState());
+    efMounted=true;
+    requestAnimationFrame(()=>{ if(efApi.resize) efApi.resize(); watchCharges(); drawEfProxy(); });
+  }
+  // track the two draggable charges via helper expressions so the proxy redraws whenever they move
+  function watchCharges(){
+    if(!efApi||!efApi.HelperExpression||efHelpers.length) return;
+    const mk=(latex,set)=>{ const h=efApi.HelperExpression({latex});
+      h.observe("numericValue",()=>{ const v=h.numericValue; if(typeof v==="number"&&isFinite(v)) set(v); drawEfProxy(); });
+      efHelpers.push(h); };
+    mk("P_{1}.x",v=>EFP1.x=v); mk("P_{1}.y",v=>EFP1.y=v);
+    mk("P_{2}.x",v=>EFP2.x=v); mk("P_{2}.y",v=>EFP2.y=v);
+  }
+  // self-rendered electric-field proxy: mirrors the desmos.py field (same formulas, grid, palette) so it can
+  // scale smoothly during the fly while the live calc is held at native size — exactly like the Mandelbrot proxy.
+  function efxFrom(px,py,q,s){ const dx=px-s.x,dy=py-s.y; return q*dx/Math.pow(dx*dx+dy*dy+0.02,1.5); }
+  function efyFrom(px,py,q,s){ const dx=px-s.x,dy=py-s.y; return q*dy/Math.pow(dx*dx+dy*dy+0.02,1.5); }
+  function drawEfProxy(){
+    if(!efShotEl||!efApi) return;
+    const S=480, ctx=efShotEl.getContext("2d");
+    if(efShotEl.width!==S){ efShotEl.width=S; efShotEl.height=S; }
+    // use the ACTUAL displayed math rectangle (lockViewport letterboxes the requested viewport into the square
+    // frame), then map each point through it independently so the proxy lines up with the live calc exactly.
+    let b=null; try{ b=efApi.graphpaperBounds&&efApi.graphpaperBounds.mathCoordinates; }catch(e){}
+    const left=b?b.left:-3.5, right=b?b.right:3.5, top=b?b.top:2.5, bottom=b?b.bottom:-2.5;
+    const MX=x=>(x-left)/(right-left)*S, MY=y=>(top-y)/(top-bottom)*S;
+    ctx.fillStyle="#f6f3ea"; ctx.fillRect(0,0,S,S);
+    ctx.strokeStyle="#16243a"; ctx.lineWidth=1.4; ctx.lineJoin="round"; ctx.lineCap="round"; ctx.beginPath();
+    for(let i=-3;i<=3.0001;i+=0.5) for(let j=-2;j<=2.0001;j+=0.5){
+      const ex=efxFrom(i,j,1,EFP1)+efxFrom(i,j,-1,EFP2), ey=efyFrom(i,j,1,EFP1)+efyFrom(i,j,-1,EFP2);
+      const fmag=Math.sqrt(ex*ex+ey*ey+0.001), ux=ex/fmag, uy=ey/fmag;
+      const tx=i+0.25*ux, ty=j+0.25*uy;
+      const lx=tx-0.08*ux-0.04*uy, ly=ty-0.08*uy+0.04*ux;
+      const rx=tx-0.08*ux+0.04*uy, ry=ty-0.08*uy-0.04*ux;
+      ctx.moveTo(MX(i),MY(j)); ctx.lineTo(MX(tx),MY(ty));                                   // shaft
+      ctx.moveTo(MX(lx),MY(ly)); ctx.lineTo(MX(tx),MY(ty)); ctx.lineTo(MX(rx),MY(ry));      // arrowhead
+    }
+    ctx.stroke();
+    const charge=(c,color,lab)=>{ const cx=MX(c.x),cy=MY(c.y),r=9;
+      ctx.fillStyle=color; ctx.beginPath(); ctx.arc(cx,cy,r,0,6.2832); ctx.fill();
+      ctx.fillStyle="#16243a"; ctx.font="600 13px 'IBM Plex Mono',ui-monospace,monospace"; ctx.textAlign="left"; ctx.textBaseline="middle";
+      ctx.fillText(lab,cx+r+3,cy); };
+    charge(EFP1,"#d6492b","+1"); charge(EFP2,"#2b53c8","-1");
+    efProxyReady=true;
+  }
+  // self-rendered Mandelbrot proxy: matches the desmos.py view (G=50 grid) and palette so it can scale
+  // smoothly during the fly while the live calc is held at a fixed size for Desmos.
+  function drawProxy(){
+    if(!shotEl) return;
+    const S=480, G=50, NIT=40, cell=S/G, ctx=shotEl.getContext("2d");
+    if(shotEl.width!==S){ shotEl.width=S; shotEl.height=S; }
+    const v=(heroApi&&heroApi.view)||{cx:-0.5,cy:0,zm:1.5};
+    ctx.fillStyle="#f6f3ea"; ctx.fillRect(0,0,S,S);
+    for(let i=0;i<G;i++)for(let j=0;j<G;j++){
+      const fx=i/(G-1), fy=j/(G-1);
+      const cx=v.cx-v.zm+fx*2*v.zm, cy=v.cy-v.zm+fy*2*v.zm;   // sample point (matches G_grid)
+      let zx=0,zy=0,g=0;
+      for(let k=0;k<NIT;k++){ const nx=zx*zx-zy*zy+cx, ny=2*zx*zy+cy; zx=nx; zy=ny; if(zx*zx+zy*zy<4) g++; else break; }
+      let r,gg,b;
+      if(g>=NIT){ r=22; gg=36; b=58; } else { const t=g/NIT; r=235-165*t; gg=235-135*t; b=225-50*t; }
+      ctx.fillStyle=`rgb(${r|0},${gg|0},${b|0})`;
+      ctx.beginPath(); ctx.arc(fx*S,(1-fy)*S,cell*0.9,0,6.2832); ctx.fill();   // dot radius tuned to match Desmos pointSize:16
+    }
+    proxyReady=true;
+  }
 
-    <!-- ============================= CONTACT ============================ -->
-    <footer id="contact" class="contact">
-      <div class="contact__inner reveal">
-        <p class="contact__no">§ 04 — Contact</p>
-        <h2 class="contact__title">Let's build something.</h2>
-        <ul class="contact__links">
-          <li><a href="mailto:chris.zy.liu@gmail.com">chris.zy.liu@gmail.com</a></li>
-          <li><a href="https://github.com/chris-zy-liu">GitHub</a></li>
-          <li><a href="https://linkedin.com/in/chris-zhengyu-liu">LinkedIn</a></li>
-        </ul>
-        <p class="contact__foot">
-          <span>Chris Zhengyu Liu</span>
-          <span>Atlanta, GA</span>
-          <span>Built from scratch — see <a href="https://github.com/chris-zy-liu/desmos.py">desmos.py</a>, Fig.&nbsp;1.</span>
-        </p>
-      </div>
-    </footer>
-  </main>
 
-  <noscript>
-    <p style="text-align:center;font-family:monospace;padding:2rem">
-      This site uses JavaScript for its interactive figures. Please enable it to explore them.
-    </p>
-  </noscript>
+  // ---- agents: a small swarm, each doing its own random walk over P ----
+  const DWELL_A=800, N_AGENTS=5, BASE_DUR=1200, AG=[];   // AG built in buildChain
+  function geo(a,b){ const g=edgeGeom(a,b); return {ax:g.sx,ay:g.sy,bx:g.ex,by:g.ey,mx:g.mx,my:g.my}; }
+  function qpt(g,t){ const m=1-t; return [m*m*g.ax+2*m*t*g.mx+t*t*g.bx, m*m*g.ay+2*m*t*g.my+t*t*g.by]; }
+  function agentTick(dt){
+    for(const a of AG){
+      if(!a.moving){ a.dwell+=dt; if(a.dwell>=DWELL_A){ a.dwell=0;
+          let r=Math.random(),b=0; for(let j=0;j<N;j++){ r-=P[a.cur][j]; if(r<=0){b=j;break;} }
+          a.next=b; a.geo=geo(a.cur,a.next); a.moving=true; a.t=0;
+          // duration ∝ edge length → constant visual pace, so long (hub) and short (ring) hops don't read as random speed changes
+          const len=Math.hypot(a.geo.bx-a.geo.ax,a.geo.by-a.geo.ay);
+          a.dur=Math.max(360,(len/RING)*BASE_DUR*a.speedMul); } }
+      else { a.t+=dt/a.dur; if(a.t>=1){ a.t=1; a.moving=false; a.cur=a.next; }
+        const p=qpt(a.geo,easeIO(Math.min(a.t,1)));
+        a.el.setAttribute("cx",p[0]); a.el.setAttribute("cy",p[1]); } }
+  }
 
-  <script src="js/mandelbrot.js"></script>
-  <script src="js/markov.js"></script>
-  <script src="js/main.js"></script>
+  // ---- render ----
+  const readout=document.getElementById("readout"), pagerlabel=document.getElementById("pagerlabel"), mkintro=document.getElementById("mkintro");
+  const panhint=document.getElementById("panhint"), crosshair=document.getElementById("crosshair");
+  const pagerEl=document.getElementById("pager");
+  const scrollcue=document.getElementById("scrollcue"), scrollcueTxt=document.getElementById("scrollcue-txt");
+  let panned=false;   // set once the user drags, so the pan cue can retire
+  const mkpanel=document.getElementById("mkpanel"), panelState=document.getElementById("mkpanel-state");
+  const panelPi=document.getElementById("mkpanel-pi"), panelDesc=document.getElementById("mkpanel-desc"), panelNext=document.getElementById("mkpanel-next");
+  let lastActive=-99, chainVisible=false, lastPanel=-1;
+  let needsCalcResize=false;   // re-fit the Desmos canvas to the figure after a window resize
+  let calcEl=null, shotEl=null, shotShown=false, proxyReady=false, homeSettled=false;
+  let lastGridKey=null, lastRoHTML="", lastPlText="", lastCop="";   // change-detect caches: skip redundant per-frame work
+  function setPanel(i){
+    if(i===lastPanel||!panelState) return;
+    panelState.textContent=`${stateText(i)} · ${NODES[i].label}`;
+    if(panelPi) panelPi.textContent=`stationary π = ${(PI[i]*100).toFixed(1)}%`;
+    if(panelDesc) panelDesc.textContent=DESC[i]||"";
+    if(panelNext){
+      panelNext.innerHTML="";
+      P[i].map((p,j)=>({p,j})).filter(o=>o.p>0).sort((a,b)=>b.p-a.p).forEach(o=>{
+        const li=document.createElement("li");
+        li.innerHTML=`<span>${stateText(o.j)}</span><b>${fmt(o.p)}</b>`;
+        panelNext.appendChild(li);
+      });
+    }
+    lastPanel=i;
+  }
+  // ---- free camera: pan selects a node, the wheel zooms (up = in) ----
+  let reveal=0, selNode=0, dive=1, diving=true, flying=false, snapped=true;   // start fully inside Home (the hero)
+  function reselect(){                 // at the overview, the node nearest screen-center is selected
+    let best=0,bd=Infinity;
+    for(let i=0;i<N;i++){ const c=dotCenter(i); const d=Math.hypot(c[0]-(CX+panX),c[1]-(CY+panY)); if(d<bd){bd=d;best=i;} }
+    selNode=best;
+  }
+  function computeCam(){               // interpolate overview ↔ selected node by the dive depth
+    const node=dotCenter(selNode), tp=easeIO(dive);
+    // geometric zoom (ZOVER^(1-dive)): perceptually even, so the acceleration comes purely from the wheel mapping
+    return { cx:lerp(CX+panX,node[0],tp), cy:lerp(CY+panY,node[1],tp), zoom:Math.pow(ZOVER,1-dive) };
+  }
+  function render(){
+    if(dive<0.04&&!diving&&!flying) reselect();
+    const cam=computeCam();
+    reveal=clamp((HANDOFF_ZOOM-cam.zoom)/(HANDOFF_ZOOM*0.6),0,1);
+    chainVisible=reveal>0.001;
+    const hidePages=reveal>0.5;
+    // grid is world-space behind everything; skip the redraw only when an opaque page FULLY covers it
+    // (i.e. settled at native scale — cam.zoom≈1). The instant a zoom-out starts the page scales below the
+    // viewport and reveals the grid at its edges, so we must keep redrawing or the background appears frozen
+    // while the card shrinks (the "minimize first, then zoom" jank). Home is transparent and never covers.
+    const gridCovered = selNode!==0 && dive>0.999;
+    if(gridCovered){ lastGridKey=""; }
+    else { const gk=cam.cx.toFixed(1)+"|"+cam.cy.toFixed(1)+"|"+cam.zoom.toFixed(4);
+      if(gk!==lastGridKey){ drawGrid(cam); lastGridKey=gk; } }
+    chaing.setAttribute("transform",`translate(${(vw/2).toFixed(1)},${(vh/2).toFixed(1)}) scale(${cam.zoom.toFixed(4)}) translate(${(-cam.cx).toFixed(1)},${(-cam.cy).toFixed(1)})`);
+
+    for(let i=0;i<N;i++){              // only the selected node's page reveals, by flying into it
+      const prox=(i===selNode)?clamp(dive,0,1):0, pg=PAGES[i];
+      if(hidePages||prox<0.002){ if(pg.style.visibility!=="hidden") pg.style.visibility="hidden"; continue; }
+      pg.style.visibility="visible";
+      // composited fly-in: scale + opacity only (no per-frame clip-path repaint). opacity ramps over the
+      // back half of the dive so the page doesn't ghost in while it's still a tiny rectangle at center.
+      pg.style.opacity=easeIO(clamp((prox-0.08)/0.62,0,1)).toFixed(3);
+      pg.style.transform=`scale(${cam.zoom.toFixed(4)})`;
+      // counter-scale the live calcs so Desmos always measures a constant on-screen size (never resizes → no jitter/white);
+      // the proxy canvases (which DO scale with the page) stand in during the fly
+      if(i===0&&calcEl) calcEl.style.transform=`scale(${(1/Math.max(cam.zoom,1e-4)).toFixed(4)})`;
+      if(i===3&&efCalcEl) efCalcEl.style.transform=`scale(${(1/Math.max(cam.zoom,1e-4)).toFixed(4)})`;
+      pg.style.pointerEvents=prox>0.85?"auto":"none";
+    }
+
+    chainwrap.style.visibility=reveal>0.001?"visible":"hidden";
+    chainwrap.style.opacity=reveal.toFixed(3);
+    chainwrap.classList.toggle("live",reveal>0.5);
+
+    // proxy swap: live calc only when settled at native scale; the scaling Mandelbrot canvas stands in during the fly
+    const settled=(selNode===0&&cam.zoom>0.999);
+    const showShot=(selNode===0&&proxyReady&&!settled);
+    if(calcEl) calcEl.style.opacity=showShot?"0":"1";
+    if(showShot!==shotShown){ if(shotEl) shotEl.style.opacity=showShot?"1":"0"; shotShown=showShot; }
+    if(needsCalcResize&&settled&&heroApi&&heroApi.resize){ heroApi.resize(); needsCalcResize=false; }
+    // re-fit the canvas every time we arrive at the settled figure — corrects dots left shrunk after navigating away
+    if(settled&&!homeSettled&&heroApi&&heroApi.resize) heroApi.resize();
+    homeSettled=settled;
+
+    // electric-field proxy swap (desmos.py node = Hobby, index 3): the scaling proxy canvas stands in during the
+    // fly; the live calc only shows once settled at native scale, so you never see a CSS-stretched Desmos bitmap.
+    const efOn=(selNode===3&&cam.zoom>0.999);
+    const efShow=(selNode===3&&efProxyReady&&!efOn);
+    if(efCalcEl) efCalcEl.style.opacity=efShow?"0":"1";
+    if(efShow!==efShotShown){ if(efShotEl) efShotEl.style.opacity=efShow?"1":"0"; efShotShown=efShow; }
+    if(efOn&&!efSettled2&&efApi&&efApi.resize){ efApi.resize(); drawEfProxy(); }   // re-fit live calc + refresh proxy on arrival
+    efSettled2=efOn;
+
+    // a node lights ONLY once it's actually snapped to screen-center; while you hang between nodes
+    // nothing is lit, and the CSS stroke/opacity transitions fade it dim→bright as the snap lands.
+    const selC=dotCenter(selNode);
+    const offCenter=Math.hypot(selC[0]-(CX+panX),selC[1]-(CY+panY));
+    snapped = dive>0.02 ? true : (!steering && offCenter<nodeRadius()*0.9);
+    const lit = snapped ? selNode : -1;   // -1 = between nodes, nothing lit
+    setPanel(selNode);
+    if(lit!==lastActive){
+      EDGES.forEach(e=>e.path.classList.toggle("on",lit>=0&&e.a===lit));
+      ELABS.forEach(e=>{ const on=(lit>=0&&e.a===lit); e.lab.classList.toggle("on",on);
+        e.lab.textContent=(on&&e.main?"next ▸ "+fmt(P[e.a][e.b]):fmt(P[e.a][e.b])); });
+      CARDS.forEach((c,i)=>c.classList.toggle("on",i===lit));
+      lastActive=lit;
+    }
+
+    const label=selNode===0?"Home":NODES[selNode].label;
+    const roHTML = dive>0.5
+      ? `<b>${stateText(selNode)} · ${label}</b><span class="sep">·</span>π ${(PI[selNode]*100).toFixed(1)}%`
+      : `<b>The chain · overview</b><span class="sep">·</span>centered on <span class="inf">${stateText(selNode)} ${label}</span>`;
+    if(roHTML!==lastRoHTML){ readout.innerHTML=roHTML; lastRoHTML=roHTML; }   // only re-parse when the text actually changes
+    const plText = dive>0.6
+      ? "scroll down to return to the chain"
+      : (snapped
+          ? "scroll ↑ to enter the highlighted node · move to steer · click a node to center it"
+          : "move the cursor to center a node · then scroll ↑ to enter");
+    if(plText!==lastPlText){ pagerlabel.textContent=plText; lastPlText=plText; }
+
+    mkintro.style.opacity=reveal.toFixed(3); mkintro.style.transform=`translateY(${((1-reveal)*18).toFixed(1)}px)`;
+    if(mkpanel) mkpanel.style.opacity=reveal>0.4?reveal.toFixed(3):"0";
+    if(panhint) panhint.classList.toggle("show", reveal>0.5 && dive<0.2 && !panned);
+
+    // the chain chrome fades in only as the chain appears — so the landing reads like a normal site
+    const cop=reveal.toFixed(3);
+    if(cop!==lastCop){ readout.style.opacity=cop; if(pagerEl) pagerEl.style.opacity=cop; lastCop=cop; }
+    // the Home scroll-down cue (↓) was removed — the chain is discovered by zooming, not a down arrow
+    if(scrollcue) scrollcue.style.opacity="0";
+  }
+
+  // ---- input: wheel zooms (up = in), drag pans, render on demand ----
+  let needsRender=true, navRAF=0;
+  const ZK=0.0016;                  // wheel delta → dive depth
+  addEventListener("wheel",e=>{
+    e.preventDefault();
+    const up=-e.deltaY;             // wheel up = zoom in = dive deeper (like map/Desmos controls)
+    // gate: you can only dive INTO a node once it's fully snapped to center — no diving from the dead
+    // space between nodes (that's what made the background slide sideways). Checked before cancelling any
+    // in-flight snap tween, so a running snap is free to land and unlock the dive.
+    if(up>0 && dive<0.04 && !snapped) return;
+    cancelAnimationFrame(navRAF); flying=false;
+    if(up>0) diving=true;           // lock onto the selected node while diving in
+    // tactile pacing, per direction:
+    //   zoom OUT — gentle right at the page (dive~1), accelerating as you pull back to the overview (feels good as-is)
+    //   zoom IN  — slow as you leave the overview (dive~0) so the fly-in actually reads, then accelerating into the page
+    const accel = up>0 ? 0.3+1.9*Math.pow(dive,1.7) : 0.3+1.9*Math.pow(1-dive,1.7);
+    dive=clamp(dive+up*ZK*accel,0,1);
+    if(dive<=0.001) diving=false;   // back at the overview → free to reselect by panning
+    lastMoveT=-1e9;                  // any zoom retires the crosshair (it returns on the next mouse move)
+    needsRender=true;
+  },{passive:false});
+
+  // steer: at the overview the chain trails the cursor under the fixed crosshair; the camera eases
+  // toward a target set by the cursor offset (the "tail"), and once it catches up the nearest node snaps to center.
+  let followX=0, followY=0, steering=false, settleT=0, lastMoveT=-1e9;
+  addEventListener("pointermove",e=>{
+    if(e.pointerType==="touch") return;
+    if(!chainVisible||dive>0.14){ steering=false; return; }      // only steer in the overview
+    cancelAnimationFrame(navRAF); flying=false;                  // the cursor overrides any running snap / fly
+    // map the cursor offset to a pan target with a power curve: the window EDGES reach well past the ring
+    // (a linear gain ran out of screen before the top/bottom nodes, which sit a full RING from center),
+    // while the curve keeps fine control near the center. So every node — and the title block out beyond
+    // the ring — is reachable without leaving the window.
+    const REACH=RING*2.4, CURVE=1.6;
+    // radial mapping → the reachable region is a CIRCLE of radius REACH. (Clamping each axis on its own made
+    // it a square whose corners reached √2 farther than its sides.) Normalize both axes by the same reference
+    // so equal mouse travel pans equally in x and y, curve the magnitude, then push along the cursor direction.
+    const ref=Math.min(vw,vh)/2;
+    const ox=(e.clientX-vw/2)/ref, oy=(e.clientY-vh/2)/ref;
+    const mag=Math.hypot(ox,oy), reach=Math.pow(Math.min(mag,1),CURVE)*REACH, u=mag>1e-6?reach/mag:0;
+    followX=ox*u; followY=oy*u;
+    steering=true; settleT=0; lastMoveT=performance.now(); panned=true; needsRender=true;
+  });
+  function steerTick(dt){
+    if(!steering) return;
+    const k=1-Math.pow(0.003,dt/1000);                           // gentler ease → the chain tails behind, a touch slower
+    panX+=(followX-panX)*k; panY+=(followY-panY)*k; needsRender=true;
+    if(Math.hypot(followX-panX,followY-panY)<RING*0.012){        // caught up to the cursor → consider settling
+      settleT+=dt;
+      if(settleT>160){
+        steering=false;
+        const px=CX+panX, py=CY+panY;                            // rest point (sheet coords); snap only if it lands near a node
+        let best=0,bd=Infinity; for(let i=0;i<N;i++){ const c=dotCenter(i); const d=Math.hypot(c[0]-px,c[1]-py); if(d<bd){bd=d;best=i;} }
+        if(bd<RING*0.34){ selNode=best; const c=dotCenter(best); tweenPan(c[0]-CX,c[1]-CY,reduce?1:340); }   // near a node → pull it to center
+        // otherwise rest where the cursor left it — free to hang between nodes
+      }
+    } else settleT=0;
+  }
+
+  function tweenPan(tx,ty,dur){     // ease pan so the selected node snaps to screen-center
+    cancelAnimationFrame(navRAF); flying=true;
+    const fx=panX,fy=panY,t0=performance.now();
+    (function fr(now){ const r=Math.min((now-t0)/dur,1),e=easeIO(r);
+      panX=lerp(fx,tx,e); panY=lerp(fy,ty,e); needsRender=true;
+      if(r<1) navRAF=requestAnimationFrame(fr); else flying=false; })(performance.now());
+  }
+  function centerOnNode(i){          // node click: glide the camera so node i sits at center (no dive)
+    selNode=i; const c=dotCenter(i); tweenPan(c[0]-CX,c[1]-CY,reduce?1:420);
+  }
+
+  function loop(now){ const dt=loop.last?now-loop.last:16; loop.last=now;
+    steerTick(dt);
+    if(needsRender){ render(); needsRender=false; }
+    // crosshair shows only while the mouse is actively steering at the overview; it fades when motion stops or on any zoom
+    if(crosshair) crosshair.style.opacity=(reveal>0.5 && dive<0.18 && !flying && now-lastMoveT<400)?"1":"0";
+    if(chainVisible&&!reduce) agentTick(dt);
+    requestAnimationFrame(loop);
+  }
+
+  // ---- init: land inside Home (the hero); scroll down to discover the chain ----
+  metrics(); sizeGrid(); buildChain(); buildPages();
+  selNode=0; dive=1; diving=true; needsRender=true; render(); mountHero();
+  if(!heroMounted) addEventListener("load",mountHero,{once:true});
+  // mount the e-field demo eagerly (deferred) so it's ready before you ever dive into the desmos.py node
+  const efInit=()=>{ mountEfield(); if(!efMounted) addEventListener("load",mountEfield,{once:true}); };
+  requestAnimationFrame(efInit);
+  requestAnimationFrame(loop);
+  addEventListener("resize",()=>{ metrics(); sizeGrid(); buildChain(); needsRender=true; needsCalcResize=true; },{passive:true});
+
+  // ---- a little something for anyone who opens the console ----
+  console.log("%c  made with love by Chris Zhengyu Liu · 2026  ",
+    "background:#16243a;color:#f6f3ea;font:600 13px/1.7 'IBM Plex Mono',ui-monospace,monospace;padding:6px 12px;border-radius:3px;");
+  console.log("%cThis site is a Markov chain — each section is a state, each arrow a transition probability.\nThe live figures are compiled with desmos.py → https://github.com/chris-zy-liu/desmos.py",
+    "color:#2b53c8;font:400 12px/1.6 'IBM Plex Mono',ui-monospace,monospace;");
+})();
+</script>
 </body>
 </html>
