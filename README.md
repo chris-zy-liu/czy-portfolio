@@ -41,19 +41,22 @@ lab/              # scratch experiments (not linked from the site)
 
 ## Deploy (GitHub Pages)
 
-This deploys as a **project page** (the `chris-zy-liu.github.io` user page is the poetry site):
+This deploys as a **project page** (the `chris-zy-liu.github.io` user page is the poetry site),
+served from the custom domain **czliu.dev**:
 
 1. Commit and push to `origin`.
 2. Repo **Settings → Pages → Build and deployment → Source: Deploy from a branch**,
    pick the default branch and `/ (root)`, then **Save**.
-3. Live at **https://chris-zy-liu.github.io/czy-portfolio/**.
+3. The `CNAME` file (`czliu.dev`) sets the custom domain; point DNS at GitHub Pages
+   (apex A records `185.199.108–111.153`, or a `www` CNAME to `chris-zy-liu.github.io`),
+   then enable **Enforce HTTPS**.
+4. Live at **https://czliu.dev/** (the old `chris-zy-liu.github.io/czy-portfolio/` redirects there).
 
 `.nojekyll` is included so Pages serves files as-is.
 
-### Optional: social preview image
-For a rich link preview on LinkedIn/Twitter, add a 1200×630 PNG (e.g. `og-image.png`) and
-add `<meta property="og:image" content="https://chris-zy-liu.github.io/czy-portfolio/og-image.png" />`
-to `<head>`. (SVG isn't supported as an OG image by most platforms.)
+### Social preview image
+`og-image.png` (1440×630-ish) is referenced from `<head>` as `https://czliu.dev/og-image.png`
+for rich link previews on LinkedIn/Twitter. (SVG isn't supported as an OG image by most platforms.)
 
 ## Notes
 
