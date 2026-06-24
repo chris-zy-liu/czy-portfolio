@@ -14,25 +14,28 @@
   const SVGNS = "http://www.w3.org/2000/svg";
   const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
+  // Node order, labels, transition matrix P, and the desc lines mirror the live
+  // (desktop "cycle") site in index.html — keep them aligned so the two surfaces
+  // describe the same chain. index = section; data-state="N" in linear.html must match.
   const NODES = [
-    { label: "Home",         href: "#home",       desc: "The live desmos.py Mandelbrot at the top of the page." },
-    { label: "Bus ETA",      href: "#p-bus",      desc: "An XGBoost model predicting next-stop arrival from 1M+ GPS pings." },
-    { label: "Symbolic Reg.",href: "#p-symreg",   desc: "Genetic programming that evolves trading strategies on the GPU." },
-    { label: "desmos.py",    href: "#p-desmos",   desc: "A compiler from Python into interactive Desmos graphs." },
-    { label: "Classify",     href: "#p-classify", desc: "Step-by-step AI feedback on student work over an infinite canvas." },
-    { label: "DecoAR",       href: "#p-decoar",   desc: "Generated 3D furniture placed into LiDAR-scanned rooms." },
-    { label: "Research",     href: "#research",   desc: "Simulation software at CEE and an NLP/ETL pipeline at Scheller." },
-    { label: "About",        href: "#about",      desc: "ISyE at Georgia Tech — operations research, statistics, the odd poem." },
+    { label: "Home",          href: "#home",       desc: "Home base for the site and its live Desmos-generated figure." },
+    { label: "Prediction",    href: "#predict",    desc: "Prediction, search, and data-driven modeling projects." },
+    { label: "Tools & Apps",  href: "#tools",      desc: "Applications where models, interfaces, and deployment meet." },
+    { label: "Hobby projects",href: "#hobby",      desc: "Personal tools and experiments built around workflows I wanted." },
+    { label: "Experience",    href: "#experience", desc: "Research software, simulation workflows, and data pipelines." },
+    { label: "Education",     href: "#education",  desc: "Academic background in ISyE, operations research, statistics, and computing." },
+    { label: "Skills",        href: "#skills",     desc: "Technical stack across modeling, data, backend, and infrastructure." },
+    { label: "About",         href: "#about",      desc: "Writing, languages, and the ideas that shape my work." },
   ];
   const P = [
-    [0.00, 0.25, 0.00, 0.25, 0.00, 0.00, 0.25, 0.25],
-    [0.25, 0.00, 0.40, 0.00, 0.00, 0.00, 0.35, 0.00],
-    [0.30, 0.30, 0.00, 0.40, 0.00, 0.00, 0.00, 0.00],
-    [0.35, 0.00, 0.30, 0.00, 0.35, 0.00, 0.00, 0.00],
-    [0.30, 0.00, 0.00, 0.00, 0.00, 0.40, 0.00, 0.30],
-    [0.30, 0.00, 0.00, 0.40, 0.00, 0.00, 0.00, 0.30],
-    [0.00, 0.40, 0.00, 0.00, 0.35, 0.00, 0.00, 0.25],
-    [0.50, 0.00, 0.00, 0.25, 0.00, 0.00, 0.25, 0.00],
+    [0.00, 0.55, 0.00, 0.25, 0.00, 0.00, 0.00, 0.20],
+    [0.25, 0.00, 0.55, 0.20, 0.00, 0.00, 0.00, 0.00],
+    [0.25, 0.20, 0.00, 0.55, 0.00, 0.00, 0.00, 0.00],
+    [0.25, 0.00, 0.20, 0.00, 0.55, 0.00, 0.00, 0.00],
+    [0.25, 0.00, 0.00, 0.00, 0.00, 0.55, 0.00, 0.20],
+    [0.25, 0.00, 0.00, 0.00, 0.20, 0.00, 0.55, 0.00],
+    [0.25, 0.00, 0.00, 0.00, 0.00, 0.20, 0.00, 0.55],
+    [0.55, 0.00, 0.00, 0.00, 0.25, 0.00, 0.20, 0.00],
   ];
   const N = NODES.length;
 

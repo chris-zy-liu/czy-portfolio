@@ -1,0 +1,589 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Chris Zhengyu Liu — Applied ML &amp; Data Engineering</title>
+<meta name="description" content="Chris Zhengyu Liu — Industrial & Systems Engineering at Georgia Tech. Applied machine learning, data engineering, and simulation." />
+<meta name="author" content="Chris Zhengyu Liu" />
+<meta name="theme-color" content="#f6f3ea" />
+<link rel="icon" href="favicon.svg" type="image/svg+xml" />
+<link rel="canonical" href="https://czliu.dev/" />
+
+<!-- Open Graph / social -->
+<meta property="og:type" content="website" />
+<meta property="og:title" content="Chris Zhengyu Liu — Applied ML & Data Engineering" />
+<meta property="og:description" content="ISyE at Georgia Tech. Applied ML, data engineering, and simulation — with a live desmos.py Mandelbrot and a Markov-chain site map." />
+<meta property="og:url" content="https://czliu.dev/" />
+<meta name="twitter:card" content="summary" />
+<meta name="twitter:title" content="Chris Zhengyu Liu — Applied ML & Data Engineering" />
+<meta name="twitter:description" content="ISyE at Georgia Tech. Applied ML, data engineering, and simulation." />
+
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300..700;1,9..144,300..600&family=Newsreader:ital,opsz,wght@0,6..72,300..500;1,6..72,300..400&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+
+<link rel="stylesheet" href="css/styles.css" />
+<script src="https://www.desmos.com/api/v1.11/calculator.js?apiKey=896aa12c7b744870b70aef3f27878099"></script>
+</head>
+<body>
+
+  <!-- drafting-paper grid + grain overlays -->
+  <div class="paper-grid" aria-hidden="true"></div>
+  <div class="grain" aria-hidden="true"></div>
+
+  <!-- docked Markov-chain minimap (appears after the §00 section; built by markov.js) -->
+  <aside class="minimap" id="minimap" aria-label="Site map — random walk">
+    <span class="minimap__cap"><span>minimap</span><span>you ●</span></span>
+  </aside>
+
+  <header class="nav">
+    <a class="nav__brand" href="#top">
+      <span class="nav__mark">C·L</span>
+      <span class="nav__name">Chris&nbsp;Zhengyu&nbsp;Liu</span>
+    </a>
+    <nav class="nav__links" aria-label="Primary">
+      <a href="#predict"><span class="idx">01</span> Work</a>
+      <a href="#experience"><span class="idx">02</span> Experience</a>
+      <a href="#about"><span class="idx">03</span> About</a>
+      <a class="nav__cta" href="#contact">Get in touch <span aria-hidden="true">↗</span></a>
+    </nav>
+  </header>
+
+  <main id="top">
+    <section class="hero" id="home">
+
+      <!-- LEFT: positioning -->
+      <div class="hero__intro">
+        <p class="eyebrow reveal" style="--d:.05s">
+          <span class="eyebrow__dot"></span>
+          B.S. Industrial &amp; Systems Engineering · Georgia Tech
+        </p>
+
+        <h1 class="hero__title">
+          <span class="line reveal" style="--d:.12s">I build systems</span>
+          <span class="line reveal" style="--d:.20s">that <em>simulate,</em></span>
+          <span class="line reveal" style="--d:.28s"><em>predict</em> &amp; <em>evolve.</em></span>
+        </h1>
+
+        <p class="hero__lede reveal" style="--d:.40s">
+          I work across applied machine learning, data engineering, and simulation. My projects
+          usually start with messy data or a modeling problem and end as software someone can run.
+          The interactive figure here is generated with
+          <a href="https://github.com/chris-zy-liu/desmos.py">desmos.py</a>, a Python package I
+          built for creating Desmos graphs programmatically.
+        </p>
+
+        <p class="hero__links reveal" style="--d:.50s">
+          <a href="Chris_Liu_General_Resume.pdf" target="_blank" rel="noopener">Résumé&nbsp;↗</a>
+          <span class="sep" aria-hidden="true">·</span>
+          <a href="https://github.com/chris-zy-liu" target="_blank" rel="noopener">GitHub&nbsp;↗</a>
+          <span class="sep" aria-hidden="true">·</span>
+          <a href="https://linkedin.com/in/chris-zhengyu-liu" target="_blank" rel="noopener">LinkedIn&nbsp;↗</a>
+          <span class="sep" aria-hidden="true">·</span>
+          <a href="mailto:czliu@gatech.edu">Email</a>
+        </p>
+
+        <dl class="hero__stats reveal" style="--d:.60s">
+          <div><dt>GPA</dt><dd>4.00<span>/4.0</span></dd></div>
+          <div><dt>Focus</dt><dd>OR &amp; Statistics</dd></div>
+          <div><dt>Minor</dt><dd>Computing &amp; AI</dd></div>
+          <div><dt>Based</dt><dd>Atlanta, GA</dd></div>
+        </dl>
+
+        <p class="statetag reveal" style="--d:.70s" data-state="0"></p>
+      </div>
+
+      <!-- RIGHT: the drafted Mandelbrot figure -->
+      <figure class="plot reveal" style="--d:.34s">
+        <div class="plot__frame" id="plot-frame">
+          <div id="calc" class="plot__calc"></div>
+
+          <!-- registration / crop marks -->
+          <span class="reg reg--tl" aria-hidden="true"></span>
+          <span class="reg reg--tr" aria-hidden="true"></span>
+          <span class="reg reg--bl" aria-hidden="true"></span>
+          <span class="reg reg--br" aria-hidden="true"></span>
+
+          <!-- live coordinate readout -->
+          <div class="plot__hud" aria-hidden="true">
+            <span class="hud__row">Re&nbsp;<b id="hud-re">−0.5000</b></span>
+            <span class="hud__row">Im&nbsp;<b id="hud-im">+0.0000</b></span>
+            <span class="hud__row hud__zoom">zoom&nbsp;<b id="hud-zoom">1.0×</b></span>
+          </div>
+
+          <!-- zoom controls -->
+          <div class="plot__ctrl">
+            <button id="zoom-in"  aria-label="Zoom in">+</button>
+            <button id="zoom-out" aria-label="Zoom out">−</button>
+            <button id="zoom-rst" aria-label="Reset view">⤾</button>
+          </div>
+        </div>
+
+        <figcaption class="plot__cap">
+          <span class="plot__fig">Fig.&nbsp;1</span>
+          Mandelbrot set <span class="muted">— generated by</span>
+          <a href="https://github.com/chris-zy-liu/desmos.py">desmos.py</a>
+          <span class="muted">and rendered live in the browser. Click to recenter; use +/− to zoom.</span>
+        </figcaption>
+      </figure>
+
+    </section>
+
+    <!-- ============================ RANDOM WALK ========================= -->
+    <section id="walk" class="section walk">
+      <header class="section__head reveal">
+        <span class="section__no">§ 00</span>
+        <h2 class="section__title">A random walk through the site</h2>
+        <p class="section__sub">
+          This site is a Markov chain. Each node is a section of the portfolio, and the chain shows
+          how the sections connect — each arrow is a transition probability, and the arrows leaving a
+          node sum to 1. The <b>orange edge</b> is the most likely next step; follow it node to node
+          for the recommended tour. <b>π</b> is the long-run share of time a random walk spends in
+          each state.
+        </p>
+      </header>
+
+      <div class="walk__stage reveal">
+        <div class="walk__diagram" id="markov" role="img"
+             aria-label="A Markov-chain state diagram of this site's sections."></div>
+
+        <aside class="walk__panel">
+          <p class="walk__kicker">Current state</p>
+          <h3 class="walk__label" id="mk-label">—</h3>
+          <p class="walk__pi" id="mk-pi"></p>
+          <p class="walk__desc" id="mk-desc"></p>
+          <p class="walk__kicker walk__kicker--next">Transition row — P(next | here)</p>
+          <ul class="walk__next" id="mk-next"></ul>
+          <a class="walk__go" id="mk-go" href="#top">Open section <span aria-hidden="true">→</span></a>
+        </aside>
+      </div>
+    </section>
+
+    <!-- ======================= PREDICTION & SEARCH ====================== -->
+    <section id="predict" class="section">
+      <header class="section__head reveal">
+        <span class="section__no">§ 01</span>
+        <h2 class="section__title">Prediction &amp; Search</h2>
+        <p class="section__sub">Projects that use data to estimate, search, and test decisions under uncertainty.</p>
+        <p class="statetag" data-state="1"></p>
+      </header>
+
+      <ol class="projects">
+
+        <!-- GT Bus Arrival Prediction -->
+        <li class="project reveal" id="p-bus">
+          <div class="project__media">
+            <svg class="fig fig--route" viewBox="0 0 200 200" aria-hidden="true">
+              <path class="fig__grid" d="M0 50H200M0 100H200M0 150H200M50 0V200M100 0V200M150 0V200"/>
+              <path id="busline" class="fig__path" d="M18 168 C 60 150, 52 96, 96 92 S 150 70, 150 40 S 176 28, 184 22"/>
+              <g class="fig__stops">
+                <circle cx="18" cy="168" r="3.5"/><circle cx="96" cy="92" r="3.5"/>
+                <circle cx="150" cy="40" r="3.5"/><circle cx="184" cy="22" r="3.5"/>
+              </g>
+              <circle class="fig__bus" r="4.5"><animateMotion dur="6s" repeatCount="indefinite" rotate="auto"><mpath href="#busline"/></animateMotion></circle>
+            </svg>
+            <span class="project__live"><span class="dot"></span>live</span>
+          </div>
+          <div class="project__body">
+            <p class="project__meta"><span class="project__fig">Fig. 2</span> Apr–May 2026</p>
+            <h3 class="project__name">GT Bus Arrival Prediction</h3>
+            <p class="project__desc">
+              I collected <b>1M+ GPS observations</b> from Georgia Tech's public transit API by polling
+              every 15&nbsp;seconds for about a month. I labeled next-stop arrivals with geospatial
+              buffering, engineered route-progress, headway, speed, traffic, and time features, and
+              trained an <b>XGBoost</b> model on a chronological split. The model now powers a live
+              dashboard for next-stop arrival estimates and historical route behavior.
+            </p>
+            <ul class="tags">
+              <li>Python</li><li>XGBoost</li><li>Pandas</li><li>Geospatial</li><li>Vultr</li>
+            </ul>
+            <p class="project__links">
+              <a href="http://108.61.220.216:8080/">Live demo <span aria-hidden="true">↗</span></a>
+            </p>
+          </div>
+        </li>
+
+        <!-- Evolutionary Symbolic Regression -->
+        <li class="project reveal" id="p-symreg">
+          <div class="project__media">
+            <svg class="fig fig--tree" viewBox="0 0 200 200" aria-hidden="true">
+              <path class="fig__grid" d="M0 50H200M0 100H200M0 150H200M50 0V200M100 0V200M150 0V200"/>
+              <g class="fig__branch">
+                <line x1="100" y1="40" x2="60" y2="92"/><line x1="100" y1="40" x2="140" y2="92"/>
+                <line x1="60" y1="92" x2="38" y2="150"/><line x1="60" y1="92" x2="84" y2="150"/>
+                <line x1="140" y1="92" x2="118" y2="150"/><line x1="140" y1="92" x2="166" y2="150"/>
+              </g>
+              <g class="fig__node">
+                <circle cx="100" cy="40" r="9"/><circle cx="60" cy="92" r="8"/><circle cx="140" cy="92" r="8"/>
+                <circle cx="38" cy="150" r="7"/><circle cx="84" cy="150" r="7"/>
+                <circle cx="118" cy="150" r="7"/><circle cx="166" cy="150" r="7"/>
+              </g>
+              <g class="fig__op">
+                <text x="100" y="44">×</text><text x="60" y="96">+</text><text x="140" y="96">−</text>
+              </g>
+            </svg>
+          </div>
+          <div class="project__body">
+            <p class="project__meta"><span class="project__fig">Fig. 3</span> Aug 2025–May 2026</p>
+            <h3 class="project__name">Evolutionary Symbolic Regression</h3>
+            <p class="project__desc">
+              A GPU-accelerated <b>genetic-programming</b> experiment for evolving interpretable
+              trading rules over intraday cryptocurrency data. I built a stack-machine tree evaluator,
+              CUDA&nbsp;/&nbsp;CuPy scoring path, Binance-to-Parquet data pipeline, multi-timeframe
+              feature generation, and out-of-sample backtesting tools for tracking P&amp;L, drawdown,
+              and rolling Sharpe.
+            </p>
+            <ul class="tags">
+              <li>DEAP</li><li>CuPy</li><li>CUDA</li><li>NumPy</li><li>Parquet</li>
+            </ul>
+            <p class="project__links">
+              <a href="https://github.com/chris-zy-liu/symbolic-evolution-of-trading-agents">GitHub <span aria-hidden="true">↗</span></a>
+            </p>
+          </div>
+        </li>
+      </ol>
+    </section>
+
+    <!-- ====================== TOOLS & APPLICATIONS ====================== -->
+    <section id="tools" class="section section--alt">
+      <header class="section__head reveal">
+        <span class="section__no">§ 02</span>
+        <h2 class="section__title">Tools &amp; Applications</h2>
+        <p class="section__sub">Applications where models, interfaces, and deployment meet.</p>
+        <p class="statetag" data-state="2"></p>
+      </header>
+
+      <ol class="projects">
+
+        <!-- Classify -->
+        <li class="project reveal" id="p-classify">
+          <div class="project__media">
+            <svg class="fig fig--canvas" viewBox="0 0 200 200" aria-hidden="true">
+              <path class="fig__grid" d="M0 50H200M0 100H200M0 150H200M50 0V200M100 0V200M150 0V200"/>
+              <path class="fig__link" d="M74 59 H96 M52 74 V92 Q52 108 78 108 M118 90 V104 Q118 120 132 124 M100 123 H120"/>
+              <g class="fig__cards">
+                <rect x="30" y="44" width="44" height="30" rx="3"/>
+                <rect x="96" y="60" width="44" height="30" rx="3"/>
+                <rect x="56" y="108" width="44" height="30" rx="3"/>
+                <rect class="fig__sum" x="120" y="120" width="48" height="32" rx="3"/>
+              </g>
+              <g class="fig__dot"><circle cx="74" cy="59" r="2.4"/><circle cx="118" cy="90" r="2.4"/><circle cx="100" cy="123" r="2.4"/></g>
+            </svg>
+          </div>
+          <div class="project__body">
+            <p class="project__meta"><span class="project__fig">Fig. 4</span> Jan 2026–Present</p>
+            <h3 class="project__name">Classify — AI classroom platform</h3>
+            <p class="project__desc">
+              A time-synchronized infinite canvas for analyzing a student's work step by step and
+              returning targeted feedback. I built the <b>Flask</b> backend, <b>Gemini</b> integration,
+              and hierarchical aggregation layer that rolls step feedback into assignment and
+              class-level summaries. The project started at a hackathon, grew from 4&nbsp;→&nbsp;6
+              contributors, and is now registered as a Georgia LLC.
+            </p>
+            <ul class="tags">
+              <li>Flask</li><li>Gemini API</li><li>PostgreSQL</li><li>AWS EC2</li><li>Vercel</li>
+            </ul>
+          </div>
+        </li>
+
+        <!-- DecoAR -->
+        <li class="project reveal" id="p-decoar">
+          <div class="project__media">
+            <svg class="fig fig--ar" viewBox="0 0 200 200" aria-hidden="true">
+              <path class="fig__grid" d="M0 50H200M0 100H200M0 150H200M50 0V200M100 0V200M150 0V200"/>
+              <path class="fig__floor" d="M40 134 L100 164 L160 134 L100 104 Z"/>
+              <path class="fig__cube-l" d="M66 86 L100 106 L100 148 L66 128 Z"/>
+              <path class="fig__cube-r" d="M134 86 L100 106 L100 148 L134 128 Z"/>
+              <path class="fig__cube-top" d="M100 66 L134 86 L100 106 L66 86 Z"/>
+              <g class="fig__scanpts"><circle cx="100" cy="66" r="2"/><circle cx="66" cy="86" r="2"/><circle cx="134" cy="86" r="2"/><circle cx="100" cy="148" r="2"/></g>
+              <line class="fig__scan" x1="48" y1="0" x2="152" y2="0">
+                <animateTransform attributeName="transform" type="translate" values="0 60;0 156;0 60" dur="4.5s" repeatCount="indefinite"/>
+              </line>
+            </svg>
+          </div>
+          <div class="project__body">
+            <p class="project__meta"><span class="project__fig">Fig. 5</span> Feb 2026 · AR / generative 3D prototype</p>
+            <h3 class="project__name">DecoAR</h3>
+            <p class="project__desc">
+              A hackathon prototype for previewing furniture in LiDAR-scanned rooms. I built the
+              Python backend for scraping retailer furniture dimensions and generating 3D assets with
+              <b>Microsoft TRELLIS</b>, which the iOS app placed into an <b>ARKit / RealityKit</b> scene.
+            </p>
+            <ul class="tags">
+              <li>Python</li><li>Microsoft TRELLIS</li><li>ARKit</li><li>RealityKit</li><li>Generative 3D</li>
+            </ul>
+            <p class="project__links">
+              <a href="https://www.youtube.com/watch?v=DTVRyiNHafc">Demo <span aria-hidden="true">↗</span></a>
+              <span class="project__credit">courtesy of my teammate</span>
+            </p>
+          </div>
+        </li>
+      </ol>
+    </section>
+
+    <!-- ========================= HOBBY PROJECTS ========================= -->
+    <section id="hobby" class="section">
+      <header class="section__head reveal">
+        <span class="section__no">§ 03</span>
+        <h2 class="section__title">Hobby projects</h2>
+        <p class="section__sub">Personal tools and experiments, made for the love of it.</p>
+        <p class="statetag" data-state="3"></p>
+      </header>
+
+      <ol class="projects">
+
+        <!-- desmos.py -->
+        <li class="project reveal" id="p-desmos">
+          <div class="project__media">
+            <svg class="fig fig--compile" viewBox="0 0 200 200" aria-hidden="true">
+              <path class="fig__grid" d="M0 50H200M0 100H200M0 150H200M50 0V200M100 0V200M150 0V200"/>
+              <g class="fig__code">
+                <rect x="22" y="58" width="56" height="6" rx="2"/><rect x="22" y="72" width="40" height="6" rx="2"/>
+                <rect x="22" y="86" width="60" height="6" rx="2"/><rect x="22" y="100" width="34" height="6" rx="2"/>
+                <rect x="22" y="114" width="48" height="6" rx="2"/>
+              </g>
+              <path class="fig__arrow" d="M92 90 H120 M114 84 L122 90 L114 96"/>
+              <path class="fig__curve" d="M134 132 C 146 132, 150 70, 162 70 S 178 118, 184 118"/>
+              <path class="fig__axes" d="M132 60V134H186"/>
+            </svg>
+            <span class="project__live"><span class="dot"></span>live</span>
+          </div>
+          <div class="project__body">
+            <p class="project__meta"><span class="project__fig">Fig. 6</span> May 2026–Present · the figure up top</p>
+            <h3 class="project__name">desmos.py</h3>
+            <p class="project__desc">
+              Some tools start as small annoyances I cannot stop thinking about. <b>desmos.py</b> is an
+              open-source Python package, published on <b>PyPI</b>, that converts a strict subset of
+              Python into Desmos expressions, state JSON, and self-contained interactive HTML graphs.
+              The Mandelbrot figure at the top of this page is generated with it.
+            </p>
+            <ul class="tags">
+              <li>Python</li><li>AST / compilers</li><li>PyPI</li><li>Setuptools</li>
+            </ul>
+            <p class="project__links">
+              <a href="https://github.com/chris-zy-liu/desmos.py">GitHub <span aria-hidden="true">↗</span></a>
+              <a href="https://pypi.org/project/desmosdotpy/">PyPI <span aria-hidden="true">↗</span></a>
+            </p>
+          </div>
+        </li>
+
+        <!-- ibus-stroke-order-input -->
+        <li class="project reveal" id="p-ibus">
+          <div class="project__media">
+            <svg class="fig fig--ibus" viewBox="0 0 200 200" aria-hidden="true">
+              <path class="fig__grid" d="M0 50H200M0 100H200M0 150H200M50 0V200M100 0V200M150 0V200"/>
+              <g class="fig__branch">
+                <line x1="58" y1="58" x2="142" y2="58"/><line x1="142" y1="58" x2="142" y2="142"/>
+                <line x1="142" y1="142" x2="58" y2="142"/><line x1="58" y1="142" x2="58" y2="58"/>
+                <line x1="100" y1="58" x2="100" y2="142"/><line x1="58" y1="100" x2="142" y2="100"/>
+              </g>
+              <g class="fig__node">
+                <circle cx="58" cy="58" r="5"/><circle cx="142" cy="58" r="5"/>
+                <circle cx="58" cy="142" r="5"/><circle cx="142" cy="142" r="5"/>
+                <circle cx="100" cy="100" r="6"/>
+              </g>
+            </svg>
+          </div>
+          <div class="project__body">
+            <p class="project__meta"><span class="project__fig">Fig. 7</span> Linux input method</p>
+            <h3 class="project__name">ibus-stroke-order-input</h3>
+            <p class="project__desc">
+              A Linux IBus input method I use for Chinese typing. It maps the five primary strokes of
+              Regular Script onto five keys, letting me type simplified and traditional characters by
+              stroke order.
+            </p>
+            <ul class="tags">
+              <li>Python</li><li>IBus</li><li>Linux</li>
+            </ul>
+            <p class="project__links">
+              <a href="https://github.com/chris-zy-liu/ibus-stroke-order-input">GitHub <span aria-hidden="true">↗</span></a>
+            </p>
+          </div>
+        </li>
+      </ol>
+    </section>
+
+    <!-- =========================== EXPERIENCE =========================== -->
+    <section id="experience" class="section section--alt">
+      <header class="section__head reveal">
+        <span class="section__no">§ 04</span>
+        <h2 class="section__title">Experience</h2>
+        <p class="section__sub">Research roles where I build the software, data pipelines, and tools that make the work reproducible.</p>
+        <p class="statetag" data-state="4"></p>
+      </header>
+
+      <div class="research">
+        <article class="rentry reveal">
+          <div class="rentry__rail">
+            <span class="rentry__date">Jan 2026 — Present</span>
+            <span class="rentry__org">Georgia Tech · Civil &amp; Environmental Engineering</span>
+          </div>
+          <div class="rentry__body">
+            <h3 class="rentry__role">Programming Research Assistant — Machine Vision</h3>
+            <ul class="rentry__points">
+              <li>Lead development of a Flask/REST + JavaScript dashboard for an open-source sidewalk
+                simulation system modeling <b>18 mobility profiles</b>, replacing a notebook-based
+                workflow with configurable networks, accessibility cost add-ons, and batch execution.</li>
+              <li>Designed multithreaded job-queue and scenario-staging workflows to run, monitor, and
+                aggregate <b>tens of thousands of simulations</b>, exporting route results as geospatial shapefiles.</li>
+              <li>Designed a relational schema and web tools for pedestrian-asset management and video
+                playback; collaborate across a 20-member research group and co-author a manuscript planned for TRB submission.</li>
+            </ul>
+          </div>
+        </article>
+
+        <article class="rentry reveal">
+          <div class="rentry__rail">
+            <span class="rentry__date">Jun 2024 — May 2025</span>
+            <span class="rentry__org">Georgia Tech · Scheller College of Business</span>
+          </div>
+          <div class="rentry__body">
+            <h3 class="rentry__role">Research Assistant — NLP &amp; Data Engineering <span class="rentry__pi">(Dr. Tracey Swartz)</span></h3>
+            <ul class="rentry__points">
+              <li>Built a Python/Linux <b>ETL pipeline</b> for a 17&nbsp;GB corpus spanning <b>10,000+</b> filings,
+                shareholder letters, and executive web profiles using Selenium, PyMuPDF, OCR, XML, regex, Pandas, and multiprocessing.</li>
+              <li>Replaced a manual collection and extraction workflow with a parallelized pipeline that exported
+                research-ready Excel datasets and routed ambiguous records for human review.</li>
+              <li>Engineered <b>TF-IDF</b> features from shareholder communications and wrote protocols used to
+                train and coordinate two interns on web scraping and data processing.</li>
+            </ul>
+          </div>
+        </article>
+      </div>
+    </section>
+
+    <!-- ============================ EDUCATION =========================== -->
+    <section id="education" class="section">
+      <header class="section__head reveal">
+        <span class="section__no">§ 05</span>
+        <h2 class="section__title">Education</h2>
+        <p class="section__sub">Industrial &amp; Systems Engineering at Georgia Tech, focused on operations research, statistics, computing, and applied modeling.</p>
+        <p class="statetag" data-state="5"></p>
+      </header>
+
+      <div class="edu reveal">
+        <div class="edu__main">
+          <p class="edu__date">2025 — Expected May 2028</p>
+          <h3 class="edu__school">Georgia Institute of Technology</h3>
+          <p class="edu__deg">B.S. Industrial &amp; Systems Engineering · <b>4.00 / 4.0 GPA</b></p>
+          <dl class="edu__facts">
+            <dt>Concentration</dt><dd>Advanced Studies in Operations Research and Statistics</dd>
+            <dt>Minor</dt><dd>Computing &amp; AI</dd>
+            <dt>Honors</dt><dd>Faculty Honors — Fall 2025, Spring 2026</dd>
+            <dt>Looking ahead</dt><dd>Planning to apply to Georgia Tech's BS/MS in Computational Science &amp; Engineering.</dd>
+          </dl>
+        </div>
+        <div class="edu__course">
+          <p class="edu__kicker">Relevant coursework</p>
+          <ul class="edu__list">
+            <li>Data Structures &amp; Algorithms</li><li>Object-Oriented Programming</li>
+            <li>Database Systems</li><li>Probability</li><li>Stochastic Processes</li>
+            <li>Linear Algebra</li><li>Simulation Analysis &amp; Design</li>
+            <li>Engineering Optimization</li><li>Regression &amp; Forecasting</li>
+            <li>Computer Organization &amp; Programming</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============================== SKILLS ============================ -->
+    <section id="skills" class="section section--alt">
+      <header class="section__head reveal">
+        <span class="section__no">§ 06</span>
+        <h2 class="section__title">Skills</h2>
+        <p class="section__sub">Tools grouped by how they show up in my work: modeling, data, backend systems, infrastructure, and packaging.</p>
+        <p class="statetag" data-state="6"></p>
+      </header>
+
+      <div class="skills reveal">
+        <div class="skl"><p class="skl__cat">Languages &amp; query</p><p class="skl__items">Python · Java · SQL</p><p class="skl__note">Python is my primary language for modeling, backends, data pipelines, and tooling.</p></div>
+        <div class="skl"><p class="skl__cat">ML &amp; modeling</p><p class="skl__items">XGBoost · Scikit-learn · DEAP · CuPy</p><p class="skl__note">Gradient boosting, classical ML, and GPU genetic programming.</p></div>
+        <div class="skl"><p class="skl__cat">Data &amp; numerics</p><p class="skl__items">Pandas · NumPy · Geospatial</p><p class="skl__note">ETL, feature engineering, and large tabular workflows.</p></div>
+        <div class="skl"><p class="skl__cat">Backend &amp; storage</p><p class="skl__items">Flask · REST · MySQL · PostgreSQL · Selenium</p><p class="skl__note">APIs, relational schemas, and data collection.</p></div>
+        <div class="skl"><p class="skl__cat">Infrastructure</p><p class="skl__items">Git · Linux · AWS EC2 · GCP Compute</p><p class="skl__note">Deploying and operating small systems end to end.</p></div>
+        <div class="skl"><p class="skl__cat">Packaging</p><p class="skl__items">PyPI · Setuptools</p><p class="skl__note">Packaged and published desmos.py for installation through PyPI.</p></div>
+      </div>
+    </section>
+
+    <!-- ============================== ABOUT ============================= -->
+    <section id="about" class="section">
+      <header class="section__head reveal">
+        <span class="section__no">§ 07</span>
+        <h2 class="section__title">About</h2>
+        <p class="section__sub">I like work that spans the full path from raw data to usable systems.</p>
+        <p class="statetag" data-state="7"></p>
+      </header>
+
+      <div class="about">
+        <div class="about__col about__bio reveal">
+          <p class="about__lead">
+            I'm an <b>Industrial &amp; Systems Engineering</b> student at Georgia Tech. I am most drawn
+            to projects where the boundaries blur between data collection, modeling, simulation, and
+            software engineering.
+          </p>
+          <p class="about__lead">Away from the terminal, I write poetry and work in <b>English and Mandarin</b>.</p>
+
+          <figure class="about__poem">
+            <span class="about__figmark">Fig. ∞</span>
+            <blockquote class="about__verse">
+              The moon calls, then, behind the towers of the City;<br>
+              It beckons, then, for you, and for me.
+            </blockquote>
+            <figcaption>
+              From <cite>The Midnight Hall</cite> — collected at
+              <a href="https://chris-zy-liu.github.io/">积鱼成水 <span aria-hidden="true">↗</span></a>.
+            </figcaption>
+          </figure>
+
+          <p class="about__contact">
+            For research, internship, or project conversations:
+            <a href="mailto:czliu@gatech.edu">Email</a> ·
+            <a href="https://github.com/chris-zy-liu" target="_blank" rel="noopener">GitHub</a> ·
+            <a href="https://linkedin.com/in/chris-zhengyu-liu" target="_blank" rel="noopener">LinkedIn</a> ·
+            <a href="Chris_Liu_General_Resume.pdf" target="_blank" rel="noopener">Résumé</a>
+          </p>
+        </div>
+
+        <div class="about__col about__legend reveal">
+          <dl class="legend">
+            <dt>Honors</dt>
+            <dd>Faculty Honors (Fall 2025, Spring 2026) · 3rd Place, HackGwinnett 2024</dd>
+            <dt>Writing</dt>
+            <dd>Published with the Live Poets Society of New&nbsp;Jersey &amp; Poetry Lab Shanghai</dd>
+          </dl>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============================= CONTACT ============================ -->
+    <footer id="contact" class="contact">
+      <div class="contact__inner reveal">
+        <p class="contact__no">§ 08 — Contact</p>
+        <h2 class="contact__title">Let's build something.</h2>
+        <ul class="contact__links">
+          <li><a href="mailto:czliu@gatech.edu">czliu@gatech.edu</a></li>
+          <li><a href="https://github.com/chris-zy-liu">GitHub</a></li>
+          <li><a href="https://linkedin.com/in/chris-zhengyu-liu">LinkedIn</a></li>
+          <li><a href="Chris_Liu_General_Resume.pdf">Résumé</a></li>
+        </ul>
+        <p class="contact__foot">
+          <span>Chris Zhengyu Liu</span>
+          <span>Atlanta, GA</span>
+          <span>Built from scratch — see <a href="https://github.com/chris-zy-liu/desmos.py">desmos.py</a>, Fig.&nbsp;1.</span>
+        </p>
+      </div>
+    </footer>
+  </main>
+
+  <noscript>
+    <p style="text-align:center;font-family:monospace;padding:2rem">
+      This site uses JavaScript for its interactive figures. Please enable it to explore them.
+    </p>
+  </noscript>
+
+  <script src="js/mandelbrot.js"></script>
+  <script src="js/markov.js"></script>
+  <script src="js/main.js"></script>
+</body>
+</html>

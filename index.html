@@ -3,6 +3,19 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<script>
+  /* The cycle navigates by mouse-wheel (zoom/dive) + pointer steering, neither of which
+     exists on touch. Hand coarse-pointer / no-hover devices the linear page instead.
+     Override with ?desktop to force the cycle, or ?linear to force the linear page. */
+  (function () {
+    try {
+      var qs = location.search;
+      if (/[?&]desktop\b/.test(qs)) return;
+      var touch = (!window.matchMedia || matchMedia("(hover: none) and (pointer: coarse)").matches) || /[?&]linear\b/.test(qs);
+      if (touch) location.replace("linear.html" + location.hash);
+    } catch (e) {}
+  })();
+</script>
 <title>Chris Zhengyu Liu — Applied ML &amp; Data Engineering</title>
 <meta name="description" content="Portfolio of Chris Zhengyu Liu — Industrial &amp; Systems Engineering at Georgia Tech, working in applied machine learning, data engineering, and simulation. Live projects, research, and a desmos.py Mandelbrot." />
 <meta name="author" content="Chris Zhengyu Liu" />
