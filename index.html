@@ -320,7 +320,7 @@
   .about__poem{ margin:0; border-left:2px solid var(--accent); padding-left:1.2rem; }
   .about__verse{ font-family:var(--font-display); font-style:italic; font-size:1.25rem; line-height:1.5; margin:0 0 .8rem; color:var(--ink); }
   .about__poem figcaption{ font-size:.92rem; color:var(--ink-2); line-height:1.55; }
-  .about__contact{ font-family:var(--font-mono); font-size:.86rem; line-height:1.55; color:var(--ink-2);
+  .about__contact{ font-size:1rem; line-height:1.6; color:var(--ink-2);
     margin:1.5rem 0 0; padding-top:1.2rem; border-top:1px solid var(--grid-bold); }
   .about__contact a{ color:var(--blue); border-bottom:1px solid var(--blue-soft); }
   .about__contact a:hover{ color:var(--accent); border-color:var(--accent); }
@@ -408,6 +408,17 @@
     .proc__aside{ justify-self:start; max-width:340px; }
     .spset{ grid-template-columns:1fr; gap:clamp(26px,5vh,40px); } .spec__plate{ max-width:220px; } .mkintro{ display:none; } }
   @media (max-width:1100px){ .mkpanel{ display:none; } .skills{ grid-template-columns:repeat(2,1fr); } }
+  /* short viewports: the hero column is taller than the screen, and when it's vertically
+     centered it rides up under the fixed top bar (colliding with the "Chris Zhengyu Liu"
+     brand). Pin the intro below the chrome and trim the title so it clears the bar. */
+  @media (max-height:720px){
+    .page--hero .page__wrap{ justify-content:flex-start; padding-top:clamp(82px,13vh,104px); }
+    .hero{ align-items:start; }
+    .hero__title{ font-size:clamp(2rem,1rem + 3.4vw,3.4rem); margin:0 0 1.1rem; }
+    .hero__lede{ font-size:1rem; line-height:1.55; margin-top:1.1rem; }
+    .hero__actions{ margin-top:1.1rem; }
+    .hero__stats{ margin-top:1.3rem; padding-top:1rem; }
+  }
   @media (max-width:700px){
     .topbar{ padding:28px 40px; justify-content:flex-end; font-size:.62rem; }
     .topbar .brand{ display:none; }
@@ -593,9 +604,9 @@
       <dl class="legend">
       <dt>Honors</dt><dd>Faculty Honors (Fall 2025, Spring 2026) · 3rd Place, HackGwinnett 2024</dd>
       <dt>Writing</dt><dd>Published with the Live Poets Society of New&nbsp;Jersey &amp; Poetry Lab Shanghai</dd></dl>
-      <p class="about__contact">For research, internship, or project conversations: <a href="mailto:czliu@gatech.edu">czliu@gatech.edu</a> · <a href="https://github.com/chris-zy-liu" target="_blank" rel="noopener">GitHub</a> · <a href="https://linkedin.com/in/chris-zhengyu-liu" target="_blank" rel="noopener">LinkedIn</a> · <a href="Chris_Liu_General_Resume.pdf" target="_blank" rel="noopener">Résumé</a></p></div>
+      <p class="about__contact">For research, internship, or project conversations: <a href="mailto:czliu@gatech.edu">Email</a> · <a href="https://github.com/chris-zy-liu" target="_blank" rel="noopener">GitHub</a> · <a href="https://linkedin.com/in/chris-zhengyu-liu" target="_blank" rel="noopener">LinkedIn</a> · <a href="Chris_Liu_General_Resume.pdf" target="_blank" rel="noopener">Résumé</a></p></div>
       <figure class="about__poem"><blockquote class="about__verse">The moon calls, then, behind the towers of the City;<br>It beckons, then, for you, and for me.</blockquote>
-      <figcaption>From <cite>The Midnight Hall</cite> — collected at <a href="https://chris-zy-liu.github.io/">积鱼成水 ↗</a>.</figcaption></figure></div></div>` },
+      <figcaption>From <cite>The Midnight Hall</cite> — collected at <a href="https://chris-zy-liu.github.io/" target="_blank" rel="noopener">积鱼成水 ↗</a>.</figcaption></figure></div></div>` },
   ];
   const DESC=[
     "Home base for the site and its live Desmos-generated figure.",
@@ -760,7 +771,7 @@
           <p class="eyebrow"><span class="dot"></span> <span class="work__fig">§&nbsp;01</span> · B.S. Industrial &amp; Systems Engineering · Georgia Tech</p>
           <h1 class="hero__title"><span class="line">I build systems</span><span class="line">that <em>simulate,</em></span><span class="line"><em>predict,</em> and <em>evolve.</em></span></h1>
           <p class="hero__lede">I work across applied machine learning, data engineering, and simulation. My projects usually start with messy data or a modeling problem and end as software someone can run. The interactive figures on this site are generated with
-            <a href="https://github.com/chris-zy-liu/desmos.py">desmos.py</a>, a Python package I built for creating Desmos graphs programmatically.</p>
+            <a href="https://github.com/chris-zy-liu/desmos.py" target="_blank" rel="noopener">desmos.py</a>, a Python package I built for creating Desmos graphs programmatically.</p>
           <p class="hero__actions"><a href="Chris_Liu_General_Resume.pdf" target="_blank" rel="noopener">Résumé&nbsp;↗</a><span class="sep">·</span><a href="https://github.com/chris-zy-liu" target="_blank" rel="noopener">GitHub&nbsp;↗</a><span class="sep">·</span><a href="https://linkedin.com/in/chris-zhengyu-liu" target="_blank" rel="noopener">LinkedIn&nbsp;↗</a><span class="sep">·</span><a href="mailto:czliu@gatech.edu">Email</a></p>
           <dl class="hero__stats"><div><dt>GPA</dt><dd>4.00<span>/4.0</span></dd></div><div><dt>Focus</dt><dd>OR &amp; Statistics</dd></div><div><dt>Minor</dt><dd>Computing &amp; AI</dd></div><div><dt>Based</dt><dd>Atlanta, GA</dd></div></dl>
         </div>
@@ -769,7 +780,7 @@
           <div class="plot__hud"><span class="hud__row">Re <b id="hud-re">−0.500</b></span><span class="hud__row">Im <b id="hud-im">+0.000</b></span><span class="hud__row hud__zoom">zoom <b id="hud-z">1.0×</b></span></div>
           <div class="plot__ctrl"><button id="z-in" aria-label="Zoom in">+</button><button id="z-out" aria-label="Zoom out">−</button><button id="z-rst" aria-label="Reset">⤾</button></div></div>
           <figcaption class="plot__cap"><span class="plot__fig">Fig.&nbsp;1</span> Mandelbrot set <span class="muted">— generated by</span>
-            <a href="https://github.com/chris-zy-liu/desmos.py">desmos.py</a> <span class="muted">and rendered live in the browser. Click to recenter; use +/− to zoom.</span></figcaption></figure>
+            <a href="https://github.com/chris-zy-liu/desmos.py" target="_blank" rel="noopener">desmos.py</a> <span class="muted">and rendered live in the browser. Click to recenter; use +/− to zoom.</span></figcaption></figure>
         </div></div>`;
       } else {
         page.innerHTML=`<div class="page__wrap">${n.html}</div>`;
