@@ -5,14 +5,18 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <script>
   /* The cycle navigates by mouse-wheel (zoom/dive) + pointer steering, neither of which
-     exists on touch. Hand coarse-pointer / no-hover devices the linear page instead.
-     Override with ?desktop to force the cycle, or ?linear to force the linear page. */
+     exists on touch. Send touch-only devices to the linear page instead.
+     We key on (any-pointer: fine): if the device has ANY fine pointer (mouse, trackpad,
+     precise stylus) it's a desktop/laptop — keep the cycle. (hover/pointer media features
+     report only the PRIMARY input, which misfires on Windows touchscreen laptops, so we
+     check any-pointer.) Override with ?desktop to force the cycle, ?linear to force linear. */
   (function () {
     try {
       var qs = location.search;
       if (/[?&]desktop\b/.test(qs)) return;
-      var touch = (!window.matchMedia || matchMedia("(hover: none) and (pointer: coarse)").matches) || /[?&]linear\b/.test(qs);
-      if (touch) location.replace("linear.html" + location.hash);
+      var mm = window.matchMedia;
+      var noFinePointer = !mm || !mm("(any-pointer: fine)").matches;
+      if (noFinePointer || /[?&]linear\b/.test(qs)) location.replace("linear.html" + location.hash);
     } catch (e) {}
   })();
 </script>
