@@ -651,7 +651,17 @@
     // RING huge vs. a page → node↔chain is a deep ~40× zoom (feels like flying in / pulling way out)
     RING=Math.max(vw,vh)*9; CX=CY=RING*1.3;
     const overviewFit=vw<700 ? .44 : .656;   // chain fills ~80% of its former footprint (less crowded)
-    step=Math.max(520,vh*0.9); ZOVER=Math.min(vw,vh)*overviewFit/(2*RING); }
+    step=Math.max(520,vh*0.9); ZOVER=Math.min(vw,vh)*overviewFit/(2*RING);
+    // snap the hub onto a grid intersection so the central node sits on a "+" of the
+    // engineering grid. Use the overview's major spacing: it lands on a bold crossing at
+    // the overview and, being a multiple of every finer tier, on a crossing at every zoom
+    // in between (incl. the settled hero). A node on a world grid line stays on it under
+    // any pan/zoom, so this one snap holds in all views.
+    let minor=GRID_BASE, guard=0;
+    while(minor*ZOVER<GRID_MIN_PX && guard++<80) minor*=GRID_RATIO;
+    while(minor*ZOVER>=GRID_MIN_PX*GRID_RATIO && guard++<160) minor/=GRID_RATIO;
+    const major=minor*GRID_RATIO;
+    CX=CY=Math.round(RING*1.3/major)*major; }
 
   // ---- engineering grid: world-space, Desmos-style adaptive subdivision ----
   const gridCanvas=document.getElementById("grid"), gctx=gridCanvas&&gridCanvas.getContext("2d");
