@@ -3,25 +3,6 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<script>
-  /* The cycle navigates by mouse-wheel (zoom/dive) + pointer steering, neither of which
-     exists on touch. Send only PHONE-sized touch screens to the linear page; any large
-     screen (tablet, detached Surface, desktop) gets the cycle even if it's touch-only.
-     "Phone" = no fine pointer (mouse/trackpad/precise stylus) AND a small short edge.
-     Keeping the fine-pointer check means narrowing a desktop window won't bounce you.
-     Override with ?desktop to force the cycle, ?linear to force linear. */
-  (function () {
-    try {
-      var qs = location.search;
-      if (/[?&]desktop\b/.test(qs)) return;
-      var mm = window.matchMedia;
-      var noFinePointer = !mm || !mm("(any-pointer: fine)").matches;
-      var shortEdge = Math.min(window.innerWidth || 9999, window.innerHeight || 9999);
-      var phone = noFinePointer && shortEdge < 600;
-      if (phone || /[?&]linear\b/.test(qs)) location.replace("linear.html" + location.hash);
-    } catch (e) {}
-  })();
-</script>
 <title>Chris Zhengyu Liu — Applied ML &amp; Data Engineering</title>
 <meta name="description" content="Portfolio of Chris Zhengyu Liu — Industrial &amp; Systems Engineering at Georgia Tech, working in applied machine learning, data engineering, and simulation. Live projects, research, and a desmos.py Mandelbrot." />
 <meta name="author" content="Chris Zhengyu Liu" />
@@ -99,7 +80,8 @@
   .chainwrap{ position:fixed; inset:0; z-index:1; pointer-events:none;
     -webkit-user-select:none; user-select:none; }
   .chainwrap *{ pointer-events:none; }
-  .chainwrap.live{ pointer-events:auto; cursor:none; }   /* the fixed crosshair replaces the cursor; the chain trails the mouse */
+  .chainwrap.live{ pointer-events:auto; cursor:grab; touch-action:none; }
+  .chainwrap.is-dragging,.chainwrap.live.is-dragging .c-node{ cursor:grabbing; }
   .chainwrap.live .c-node, .chainwrap.live .c-node *{ pointer-events:auto; }   /* the whole node is clickable (children too), so a click reaches it */
   .chainwrap.live .c-node{ cursor:pointer; }
   /* non-scaling-stroke: arc width is screen-px, so it stays bold no matter how far the camera pulls out */
@@ -133,14 +115,15 @@
 
   /* pages: each its own composited layer, transformed individually (GPU) */
   .stage{ position:fixed; inset:0; z-index:2; overflow:hidden; pointer-events:none; }
-  .page{ position:absolute; inset:0; width:100vw; height:100vh; transform-origin:50% 50%;
+  .page{ position:absolute; inset:0; width:100vw; height:100dvh; padding:84px 0 56px; transform-origin:50% 50%;
     will-change:transform,opacity; backface-visibility:hidden; background:var(--paper); }
   /* the outer states get a solid paper fill so the world-grid stops bleeding through the content;
      Home keeps the live blueprint grid behind the hero (it IS the signature) */
   .page--hero{ background:transparent; }
   .page__wrap{ width:100%; height:100%; max-width:1280px; margin:0 auto;
-    padding:clamp(72px,9.5vh,124px) clamp(40px,5vw,92px) clamp(44px,6.5vh,88px);
-    display:flex; flex-direction:column; justify-content:center; }
+    padding:24px clamp(40px,5vw,92px);
+    display:flex; flex-direction:column; overflow-y:auto; overscroll-behavior:contain; scrollbar-width:thin; scrollbar-color:var(--blue-soft) transparent; }
+  .page__wrap > *{ flex-shrink:0; margin-block:auto; }
   /* HERO */
   /* cap the hero footprint to match the linear mainpage (its wrap is 1500px → the same-size title floated in too much space and read small) */
   .hero{ display:grid; grid-template-columns:minmax(0,1.05fr) minmax(0,.95fr); gap:clamp(1.5rem,4vw,3.5rem); align-items:center; width:100%; max-width:1180px; margin-inline:auto; }
@@ -150,7 +133,7 @@
     box-shadow:0 0 0 4px rgba(214,73,43,.16); animation:dotpulse 2.6s ease-in-out infinite; }
   @keyframes dotpulse{ 50%{ box-shadow:0 0 0 7px rgba(214,73,43,0); } }
   .hero__title{ font-family:var(--font-display); font-weight:400; line-height:.98; letter-spacing:-.02em;
-    font-size:clamp(2.6rem,1.5rem + 5.4vw,5.4rem); margin:0 0 1.6rem; color:var(--ink); }
+    font-size:clamp(2.6rem,1.3rem + 4.2vw,4.5rem); margin:0 0 1.6rem; color:var(--ink); }
   .hero__title .line{ display:block; }
   .hero__title em{ font-style:italic; font-weight:500; color:var(--blue); font-variation-settings:"opsz" 144; }
   .hero__title em::after{ content:""; display:block; height:2px; margin-top:-2px;
@@ -209,7 +192,7 @@
   /* WORK PAGES — full editorial spread, not cards */
   @keyframes pulse{ 0%,100%{opacity:1} 50%{opacity:.25} }
   /* full-height page: header pins to the top, the body grows to fill the rest and centers within it */
-  .work{ width:100%; height:100%; display:flex; flex-direction:column; justify-content:center; gap:clamp(1.6rem,4.5vh,3.4rem); }
+  .work{ width:100%; display:flex; flex-direction:column; justify-content:center; gap:clamp(1.6rem,4.5vh,3.4rem); }
   .work header{ max-width:70ch; }
   .work__meta{ font-family:var(--font-mono); font-size:.8rem; letter-spacing:.05em; color:var(--ink-soft);
     margin:0 0 1rem; display:flex; align-items:center; gap:.85rem; flex-wrap:wrap; }
@@ -220,18 +203,19 @@
     font-size:clamp(2.4rem,1.6rem + 3.4vw,4.6rem); margin:0; }
   .work__lead{ font-size:clamp(1.12rem,1rem + .5vw,1.5rem); line-height:1.5; color:var(--ink-2); margin:1rem 0 0; max-width:36ch; }
   .work__lead b{ color:var(--ink); }
-  /* Experience carries two full research entries — far denser than the other work
-     panels. Tighten its header (smaller title, a 2-line lead, less gap) so the body
-     fits one screen instead of overflowing up into the fixed top bar. */
+  /* Keep the three experience entries compact; short screens scroll inside the node. */
   .work--research{ gap:clamp(1rem,2.4vh,1.7rem); }
   .work--research .work__title{ font-size:clamp(2rem,1.4rem + 2vw,3rem); }
   .work--research .work__lead{ margin-top:.55rem; max-width:56ch; font-size:clamp(1.05rem,1rem + .3vw,1.22rem); }
+  .work--research .research{ gap:1.5rem; }
+  .work--research .rentry__points{ font-size:1rem; }
+  .work--research .rentry__points li{ line-height:1.45; margin-bottom:.3rem; }
   /* ── project pages: title band on top, then description (left) and figure (right) ──
      three bands (title / body / footer) fill the height; description reads as plain prose. */
-  .proc{ width:100%; height:100%; display:flex; flex-direction:column; justify-content:center; gap:clamp(1.4rem,3.5vh,2.8rem); }
+  .proc{ width:100%; display:flex; flex-direction:column; justify-content:center; gap:clamp(1.4rem,3.5vh,2.8rem); }
   .proc__head{ max-width:64ch; }
   .proc__title{ font-family:var(--font-display); font-weight:340; line-height:1.0; letter-spacing:-.025em;
-    font-size:clamp(2.2rem,1.5rem + 3.2vw,4.4rem); margin:.6rem 0 0; }
+    font-size:clamp(2.2rem,1.5rem + 2.4vw,3.6rem); margin:0; }
   .proc__state{ font-family:var(--font-mono); font-weight:500; font-size:.38em; letter-spacing:.06em;
     color:var(--accent); vertical-align:.7em; margin-right:.6em; }
   .proc__lead{ font-size:clamp(1.1rem,1rem + .46vw,1.46rem); line-height:1.5; color:var(--ink-2); margin:1rem 0 0; max-width:56ch; }
@@ -257,25 +241,26 @@
   .proc__specs dt{ font-family:var(--font-mono); font-size:.66rem; letter-spacing:.1em; text-transform:uppercase; color:var(--ink-soft); }
   .proc__specs dd{ margin:0; font-family:var(--font-mono); font-size:.8rem; color:var(--ink); line-height:1.4; }
 
-  /* merged project pages: a theme header over a grid of project "specimens" (figure + lead + stage bullets) */
+  /* Project titles lead each column; the illustrations sit alongside as annotations. */
   .spset{ flex:0 1 auto; min-height:0; display:grid; gap:clamp(26px,3.4vw,56px);
-    grid-template-columns:repeat(auto-fit,minmax(250px,1fr)); align-content:center; }
-  .spec{ display:flex; flex-direction:column; gap:1rem; min-width:0; }
-  .spec__plate{ width:100%; max-width:188px; padding:clamp(11px,1.3vw,17px); background:var(--paper-2);
-    border:1px solid rgba(43,83,200,.28); border-radius:4px; box-shadow:0 22px 50px -42px rgba(22,36,58,.55); }
+    grid-template-columns:repeat(2,minmax(0,1fr)); align-content:center; }
+  .spec{ display:flex; flex-direction:column; gap:1.25rem; min-width:0; padding-top:1.4rem; border-top:1px solid var(--grid-bold); }
+  .spec__head{ display:grid; grid-template-columns:minmax(0,1fr) 92px; gap:1.3rem; align-items:start; min-height:112px; }
+  .spec__plate{ width:100%; padding:10px; background:var(--paper-2);
+    border:1px solid rgba(43,83,200,.22); border-radius:2px; }
   .spec__plate .fig{ width:100%; }
-  .spec__body{ display:flex; flex-direction:column; gap:.6rem; }
   .spec__meta{ font-family:var(--font-mono); font-size:.72rem; letter-spacing:.04em; color:var(--ink-soft);
     margin:0; display:flex; align-items:center; gap:.7rem; flex-wrap:wrap; }
   .spec__meta .work__fig{ color:var(--accent); }
   .spec__name{ font-family:var(--font-display); font-weight:380; letter-spacing:-.015em; line-height:1.04;
-    font-size:clamp(1.3rem,1.1rem + .85vw,1.85rem); margin:.05rem 0 0; color:var(--ink); }
+    font-size:clamp(1.3rem,1.1rem + .85vw,1.85rem); margin:.65rem 0 0; color:var(--ink); }
   .spec__desc{ font-size:1rem; line-height:1.55; color:var(--ink-2); margin:0; }
   .spec__desc b{ color:var(--ink); font-weight:600; }
-  .spec__foot{ margin:.35rem 0 0; display:flex; flex-direction:column; gap:.42rem; }
+  .spec__foot{ margin:auto 0 0; padding-top:.35rem; display:flex; flex-direction:column; gap:.7rem; }
+  .spec__links{ min-height:1.4em; }
   .spec__tags{ font-family:var(--font-mono); font-size:.73rem; letter-spacing:.03em; color:var(--ink-soft); }
   .spec__links{ font-family:var(--font-mono); font-size:.83rem; display:flex; gap:1.1rem; flex-wrap:wrap; align-items:baseline; }
-  .spec__links a{ color:var(--blue); border-bottom:1px solid var(--blue-soft); }
+  .spec__links a{ color:var(--blue); text-decoration:underline; text-underline-offset:4px; }
   .spec__links .work__credit{ color:var(--ink-soft); font-size:.76rem; }
 
   .proc__foot{ display:flex; justify-content:space-between; align-items:baseline; gap:.8rem 2.5rem; flex-wrap:wrap; }
@@ -361,7 +346,7 @@
   .edu__list li::before{ content:""; position:absolute; left:0; top:.58em; width:4px; height:4px; background:var(--blue); border-radius:50%; }
 
   /* SKILLS */
-  .skills{ flex:0 1 auto; display:grid; grid-template-columns:repeat(3,1fr); gap:clamp(22px,3.4vh,40px) clamp(30px,4vw,64px); align-content:center; }
+  .skills{ flex:0 1 auto; display:grid; grid-template-columns:repeat(2,1fr); gap:clamp(22px,3.4vh,40px) clamp(30px,4vw,64px); align-content:center; }
   .skl{ padding-top:.95rem; }
   .skl__cat{ font-family:var(--font-mono); font-size:.7rem; letter-spacing:.12em; text-transform:uppercase; color:var(--accent); margin:0 0 .5rem; }
   .skl__items{ font-family:var(--font-display); font-weight:400; font-size:clamp(1.1rem,1rem + .55vw,1.45rem); line-height:1.3; color:var(--ink); margin:0; letter-spacing:-.01em; }
@@ -384,7 +369,7 @@
     font-size:.8rem; color:var(--ink-2); padding-bottom:.22rem; }
   .mkpanel__next b{ color:var(--ink); font-weight:600; }
 
-  /* center crosshair — the fixed reticle the chain is steered against; shows only while the mouse is moving at the overview */
+  /* Center marker shown only while dragging the map. */
   .crosshair{ position:fixed; left:50%; top:50%; transform:translate(-50%,-50%); z-index:5; pointer-events:none;
     width:30px; height:30px; opacity:0; transition:opacity .35s var(--ease); }
   .crosshair::before,.crosshair::after{ content:""; position:absolute; background:var(--ink); }
@@ -397,10 +382,18 @@
   .frame .tr{ top:20px; right:20px; border-top:1.5px solid var(--ink); border-right:1.5px solid var(--ink); }
   .frame .bl{ bottom:20px; left:20px; border-bottom:1.5px solid var(--ink); border-left:1.5px solid var(--ink); }
   .frame .br{ bottom:20px; right:20px; border-bottom:1.5px solid var(--ink); border-right:1.5px solid var(--ink); }
-  .topbar{ position:fixed; top:0; left:0; right:0; z-index:6; display:flex; justify-content:space-between; align-items:center;
-    padding:30px clamp(34px,5vw,56px); font-family:var(--font-mono); font-size:.72rem; letter-spacing:.08em; color:var(--ink-2); text-transform:uppercase; pointer-events:none; }
-  .topbar .brand{ font-weight:600; color:var(--ink); letter-spacing:.16em; } .topbar__tag{ color:var(--ink-2); }
-  .readout{ position:fixed; left:50%; top:30px; transform:translateX(-50%); z-index:6; font-family:var(--font-mono); font-size:.72rem; letter-spacing:.1em; color:var(--ink-soft); text-transform:uppercase; pointer-events:none; white-space:nowrap; transition:opacity .45s; }
+  .topbar{ position:fixed; top:0; left:0; right:0; z-index:7; display:grid; grid-template-columns:auto 1fr auto; align-items:center; gap:1.5rem;
+    padding:18px clamp(34px,4vw,56px); font-family:var(--font-mono); font-size:.69rem; letter-spacing:.03em; color:var(--ink-2); text-transform:uppercase;
+    background:rgba(246,243,234,.95); border-bottom:1px solid var(--grid-bold); }
+  .topbar .brand{ flex-shrink:0; font-weight:600; color:var(--ink); letter-spacing:.12em; }
+  .topbar__nav{ display:flex; justify-content:flex-end; align-items:center; min-width:0; gap:clamp(.6rem,1.3vw,1.25rem); }
+  .topbar a{ display:inline-flex; align-items:center; min-height:36px; text-decoration:none; white-space:nowrap; transition:color .2s; }
+  .topbar a:hover,.topbar a[aria-current]{ color:var(--accent); }
+  .topbar a[aria-current]{ text-decoration:underline; text-underline-offset:6px; }
+  .topbar__map{ border-left:1px solid var(--grid-bold); padding-left:1rem; }
+  .topbar__toggle{ display:none; }
+  a:focus-visible,button:focus-visible,.c-node:focus-visible{ outline:2px solid var(--blue); outline-offset:5px; }
+  .readout{ position:fixed; left:50%; top:88px; transform:translateX(-50%); z-index:6; font-family:var(--font-mono); font-size:.72rem; letter-spacing:.1em; color:var(--ink-soft); text-transform:uppercase; pointer-events:none; white-space:nowrap; transition:opacity .45s; }
   .readout b{ color:var(--ink); } .readout .inf{ color:var(--accent); } .readout .sep{ opacity:.4; margin:0 .55em; }
   .pager{ position:fixed; left:clamp(34px,5vw,56px); bottom:clamp(30px,4vw,46px); z-index:6; font-family:var(--font-mono); font-size:.68rem; letter-spacing:.1em; color:var(--ink-soft); text-transform:uppercase; pointer-events:none; transition:opacity .45s; }
   /* normal-site scroll cue shown on a settled page (before the chain is revealed) */
@@ -426,12 +419,15 @@
     .proc{ height:auto; gap:clamp(20px,4vh,36px); } .proc__body{ align-items:start; gap:clamp(22px,4vh,40px); }
     .proc__aside{ justify-self:start; max-width:340px; }
     .spset{ grid-template-columns:1fr; gap:clamp(26px,5vh,40px); } .spec__plate{ max-width:220px; } .mkintro{ display:none; } }
-  @media (max-width:1100px){ .mkpanel{ display:none; } .skills{ grid-template-columns:repeat(2,1fr); } }
+  @media (max-width:1100px){ .mkpanel{ display:none; } .skills{ grid-template-columns:repeat(2,1fr); }
+    .topbar{ grid-template-columns:1fr auto; gap:0; padding-block:10px; }
+    .topbar__nav{ grid-column:1 / -1; grid-row:2; width:100%; justify-content:space-between; }
+    .topbar__map{ grid-column:2; grid-row:1; }
+    .page{ padding-top:102px; } .readout{ top:112px; } }
   /* short viewports: the hero column is taller than the screen, and when it's vertically
      centered it rides up under the fixed top bar (colliding with the "Chris Zhengyu Liu"
      brand). Pin the intro below the chrome and trim the title so it clears the bar. */
   @media (max-height:720px){
-    .page--hero .page__wrap{ justify-content:flex-start; padding-top:clamp(82px,13vh,104px); }
     .hero{ align-items:start; }
     .hero__title{ font-size:clamp(2rem,1rem + 3.4vw,3.4rem); margin:0 0 1.1rem; }
     .hero__lede{ font-size:1rem; line-height:1.55; margin-top:1.1rem; }
@@ -439,14 +435,71 @@
     .hero__stats{ margin-top:1.3rem; padding-top:1rem; }
   }
   @media (max-width:700px){
-    .topbar{ padding:28px 40px; justify-content:flex-end; font-size:.62rem; }
-    .topbar .brand{ display:none; }
-    .readout{ top:66px; left:40px; right:40px; transform:none; white-space:normal; line-height:1.35; font-size:.62rem; }
-    .pager{ left:40px; right:40px; max-width:280px; font-size:.62rem; line-height:1.45; }
+    .topbar{ padding:6px 22px 0; font-size:.65rem; background:var(--paper); }
+    .topbar a{ min-height:44px; }
+    .topbar__toggle{ display:flex; grid-column:1 / -1; grid-row:2; justify-content:space-between; align-items:center;
+      width:100%; min-height:44px; padding:0; border:0; border-top:1px solid var(--grid-bold); background:none;
+      font:inherit; color:var(--ink); text-align:left; cursor:pointer; }
+    .topbar__toggle-hint{ color:var(--ink-soft); }
+    .topbar__toggle[aria-expanded="true"] .topbar__toggle-hint{ color:var(--accent); }
+    .topbar__nav{ display:none; position:absolute; top:100%; left:0; right:0; padding:12px 22px 20px;
+      background:var(--paper); border-bottom:1px solid var(--grid-bold); box-shadow:0 16px 24px rgba(22,36,58,.08);
+      grid-template-columns:repeat(2,minmax(0,1fr)); gap:2px 16px; }
+    .topbar.is-open .topbar__nav{ display:grid; }
+    .topbar__nav a{ padding:4px 0; }
+    .page{ padding-top:96px; padding-bottom:22px; }
+    .page__wrap{ padding:26px 24px 32px; }
+    .page__wrap > *{ margin-block:0; }
+    .work,.proc{ gap:1.75rem; }
+    .work__meta{ font-size:.7rem; margin-bottom:.75rem; }
+    .work__title,.proc__title{ font-size:2.35rem; }
+    .work__lead,.proc__lead{ font-size:1.1rem; line-height:1.5; margin-top:.75rem; }
+    .hero__stats{ grid-template-columns:repeat(2,minmax(0,1fr)); max-width:none; }
+    .hero__stats dd{ white-space:normal; }
+    .hero__title{ font-size:clamp(2.3rem,8vw,3.5rem); }
+    .eyebrow{ font-size:.65rem; line-height:1.5; }
+    .plot{ justify-self:center; max-width:420px; margin-top:1rem; }
+    .rentry{ gap:.9rem; } .research{ gap:2rem; }
+    .rentry + .rentry{ border-top:1px solid var(--grid-bold); padding-top:1.5rem; }
+    .edu__facts{ grid-template-columns:1fr; }
+    .edu__facts dd{ margin-bottom:.6rem; }
+    .skills{ grid-template-columns:1fr; gap:1.5rem; }
+    .skl{ border-top:1px solid var(--grid-bold); padding-top:1rem; }
+    .proc__body--demo{ grid-template-columns:1fr; }
+    .spset{ gap:2rem; }
+    .spec{ gap:1rem; padding-top:1.1rem; }
+    .spec__head{ grid-template-columns:minmax(0,1fr) 70px; gap:.9rem; min-height:0; }
+    .spec__plate{ padding:6px; }
+    .spec__meta{ font-size:.66rem; line-height:1.45; gap:.35rem; }
+    .spec__name{ font-size:1.45rem; line-height:1.1; }
+    .spec__links a{ min-height:40px; display:inline-flex; align-items:center; }
+    .hero__lede{ max-width:none; font-size:1rem; line-height:1.55; }
+    .hero__stats{ margin-top:1.4rem; padding-top:1rem; }
+    .plot__cap{ line-height:1.55; }
+    .readout{ top:112px; left:24px; right:24px; transform:none; white-space:normal; line-height:1.5; font-size:.62rem; }
+    .pager{ left:24px; right:24px; bottom:28px; max-width:none; font-size:.6rem; line-height:1.5; }
+    .panhint{ display:none; }
+    .frame .bl,.frame .br{ bottom:10px; }
   }
 </style>
 </head>
 <body>
+  <header class="topbar">
+    <a class="brand" href="#home" data-route="home" aria-label="Chris Zhengyu Liu — Home">Chris&nbsp;Zhengyu&nbsp;Liu</a>
+    <button class="topbar__toggle" type="button" aria-expanded="false" aria-controls="section-nav">
+      <span id="mobile-section">Home</span><span class="topbar__toggle-hint">Sections +</span>
+    </button>
+    <nav class="topbar__nav" id="section-nav" aria-label="Main sections">
+      <a href="#experience" data-route="experience">Experience</a>
+      <a href="#predict" data-route="predict">Prediction</a>
+      <a href="#tools" data-route="tools">Tools &amp; Apps</a>
+      <a href="#hobby" data-route="hobby">Hobby</a>
+      <a href="#education" data-route="education">Education</a>
+      <a href="#skills" data-route="skills">Skills</a>
+      <a href="#about" data-route="about">About</a>
+    </nav>
+    <a class="topbar__map" href="#map" data-route="map">Map</a>
+  </header>
   <canvas class="grid" id="grid" aria-hidden="true"></canvas>
   <div id="spacer"></div>
 
@@ -457,10 +510,7 @@
   <div class="mkintro" id="mkintro">
     <span class="mkintro__no">§ 00</span>
     <h2 class="mkintro__title">A random walk through the site</h2>
-    <p class="mkintro__sub">This site is a <b>Markov chain</b>. Each node is a section of the portfolio, and the
-      chain shows how the sections connect — each arrow is a transition probability, and the arrows leaving a
-      node sum to 1. The <b>orange edge</b> is the most likely next step; follow it node to node for the
-      recommended tour. <b>π</b> is the long-run share of time a random walk spends in each state.</p>
+    <p class="mkintro__sub">Pick a node to explore. The dots follow a <b>Markov chain</b>: arrows give the odds of each next stop; <b>π</b> shows where they spend their time.</p>
   </div>
 
   <aside class="mkpanel" id="mkpanel" aria-hidden="true">
@@ -474,10 +524,9 @@
 
   <div class="crosshair" id="crosshair" aria-hidden="true"></div>
   <div class="frame" aria-hidden="true"><span class="tl"></span><span class="tr"></span><span class="bl"></span><span class="br"></span></div>
-  <div class="topbar"><span class="brand">Chris&nbsp;Zhengyu&nbsp;Liu</span><span class="topbar__tag">Applied&nbsp;ML · Data&nbsp;Engineering</span></div>
   <div class="readout" id="readout"></div>
   <div class="pager" id="pager"><span id="pagerlabel"></span></div>
-  <div class="panhint" id="panhint" aria-hidden="true">move to steer · scroll to zoom</div>
+  <div class="panhint" id="panhint" aria-hidden="true">drag to pan · scroll to zoom</div>
   <div class="scrollcue" id="scrollcue" aria-hidden="true"><span id="scrollcue-txt"></span><span class="scrollcue__arr">↓</span></div>
 
 <script src="js/mandelbrot.js"></script>
@@ -497,26 +546,23 @@
     ar:`<svg class="fig fig--ar" viewBox="0 0 200 200" aria-hidden="true"><path class="fig__grid" d="M0 50H200M0 100H200M0 150H200M50 0V200M100 0V200M150 0V200"/><path class="fig__floor" d="M40 134 L100 164 L160 134 L100 104 Z"/><path class="fig__cube-l" d="M66 86 L100 106 L100 148 L66 128 Z"/><path class="fig__cube-r" d="M134 86 L100 106 L100 148 L134 128 Z"/><path class="fig__cube-top" d="M100 66 L134 86 L100 106 L66 86 Z"/><g class="fig__scanpts"><circle cx="100" cy="66" r="2"/><circle cx="66" cy="86" r="2"/><circle cx="134" cy="86" r="2"/><circle cx="100" cy="148" r="2"/></g><line class="fig__scan" x1="48" y1="0" x2="152" y2="0"><animateTransform attributeName="transform" type="translate" values="0 60;0 156;0 60" dur="4.5s" repeatCount="indefinite"/></line></svg>`,
   };
 
-  // project pages are merged by theme: a theme header over a grid of project "specimens".
-  // each specimen = its figure, a one-line lead, a few stage bullets, tags and links.
+  // Project pages share a compact title band, description, and aligned link footer.
   function specCard(p){
     const live=p.live?`<span class="work__live"><span class="d"></span>live</span>`:"";
     return `<section class="spec">
-      <div class="spec__plate">${p.svg}</div>
-      <div class="spec__body">
-        <p class="spec__meta"><span class="work__fig">Fig.&nbsp;${p.fig}</span><span>${p.date}</span>${live}</p>
-        <h3 class="spec__name">${p.name}</h3>
-        <p class="spec__desc">${p.desc}</p>
-        <div class="spec__foot"><span class="spec__tags">${p.tags.join(" · ")}</span>${p.links?`<span class="spec__links">${p.links}</span>`:""}</div>
-      </div>
+      <header class="spec__head">
+        <div><p class="spec__meta"><span>${p.date}</span>${live}</p><h3 class="spec__name">${p.name}</h3></div>
+        <div class="spec__plate">${p.svg}</div>
+      </header>
+      <p class="spec__desc">${p.desc}</p>
+      <div class="spec__foot"><span class="spec__tags">${p.tags.join(" · ")}</span><span class="spec__links">${p.links||""}</span></div>
     </section>`;
   }
   function groupPage(g){
     return `<article class="proc proc--group">
       <header class="proc__head">
-        <p class="work__meta"><span class="work__fig">${g.sec}</span><span>${g.items.length} projects</span></p>
-        <h2 class="proc__title"><span class="proc__state">s${subnum(g.s)}</span>${g.title}</h2>
-        <p class="proc__lead">${g.lead}</p>
+        <p class="work__meta"><span class="work__fig">${g.sec}</span></p>
+        <h2 class="proc__title">${g.title}</h2>
       </header>
       <div class="spset" data-n="${g.items.length}">${g.items.map(specCard).join("")}</div>
     </article>`;
@@ -526,8 +572,8 @@
   function desmosPage(){
     return `<article class="proc proc--demo">
       <header class="proc__head">
-        <p class="work__meta"><span class="work__fig">§&nbsp;04</span><span>made for the love of it</span><span class="work__live"><span class="d"></span>live</span></p>
-        <h2 class="proc__title"><span class="proc__state">s${subnum(4)}</span>Hobby projects</h2>
+        <p class="work__meta"><span class="work__fig">§&nbsp;04</span></p>
+        <h2 class="proc__title">Hobby projects</h2>
       </header>
       <div class="proc__body proc__body--demo">
         <div class="proc__desc">
@@ -558,7 +604,7 @@
       tags:["DEAP","CuPy","CUDA","NumPy","Parquet"],
       links:`<a href="https://github.com/chris-zy-liu/symbolic-evolution-of-trading-agents">GitHub ↗</a>` },
     classify:{ name:"Classify — AI classroom platform", fig:"5", date:"Jan 2026–Present", svg:FIG.canvas,
-      desc:`A time-synchronized infinite canvas for analyzing a student's work step by step and returning targeted feedback. I built the <b>Flask</b> backend, <b>Gemini</b> integration, and hierarchical aggregation layer that rolls step feedback into assignment and class-level summaries. The project started at a hackathon, grew from 4&nbsp;→&nbsp;6 contributors, and is now registered as a Georgia LLC.`,
+      desc:`The original Classify prototype used a time-synchronized canvas to capture a student's work step by step. I built its <b>Flask</b> backend and <b>Gemini</b> integration, then an aggregation layer that turns step-level feedback into assignment summaries and class reports. Student work and results were stored in <b>PostgreSQL</b>; the prototype was deployed on AWS EC2 and Vercel.`,
       tags:["Flask","Gemini API","PostgreSQL","AWS EC2","Vercel"],
       links:"" },
     deco:{ name:"DecoAR", fig:"6", date:"Feb 2026 · AR / generative 3D prototype", svg:FIG.ar,
@@ -580,20 +626,23 @@
     { label:"Prediction", html:groupPage(GROUPS.predict) },
     { label:"Tools & Apps", html:groupPage(GROUPS.tools) },
     { label:"Hobby projects", html:desmosPage() },
-    { label:"Experience", html:`<div class="work work--research"><header><p class="work__meta"><span class="work__fig">§&nbsp;05</span><span>Experience</span></p>
-      <h2 class="work__title">Experience</h2><p class="work__lead">Research roles where I build the software, data pipelines, and tools that make the work reproducible.</p></header>
+    { label:"Experience", html:`<div class="work work--research"><header><p class="work__meta"><span class="work__fig">§&nbsp;05</span></p>
+      <h2 class="work__title">Experience</h2><p class="work__lead">Research software, data pipelines, and an AI classroom startup.</p></header>
       <div class="research">
-      <article class="rentry"><div class="rentry__rail"><span class="rentry__date">Jan 2026 — Present</span><span class="rentry__org">Georgia Tech · Civil &amp; Environmental Engineering</span></div>
-      <div class="rentry__body"><h3 class="rentry__role">Programming Research Assistant — Machine Vision</h3>
-      <ul class="rentry__points"><li>Lead development of a Flask/REST + JavaScript dashboard for an open-source sidewalk simulation system modeling <b>18 mobility profiles</b>, replacing a notebook-based workflow with configurable networks, accessibility cost add-ons, and batch execution.</li>
-      <li>Designed multithreaded job-queue and scenario-staging workflows to run, monitor, and aggregate <b>tens of thousands of simulations</b>, exporting route results as geospatial shapefiles.</li>
-      <li>Designed a relational schema and web tools for pedestrian-asset management and video playback; collaborate across a 20-member research group and co-author a manuscript planned for TRB submission.</li></ul></div></article>
+      <article class="rentry"><div class="rentry__rail"><span class="rentry__date">Jan 2026 — Present</span><span class="rentry__org">DRIVE Lab · Georgia Tech<br>Civil &amp; Environmental Engineering</span><span class="rentry__org">Programming Research Assistant</span></div>
+      <div class="rentry__body"><h3 class="rentry__role">Co-Lead — Database, Dashboard &amp; Simulations</h3>
+      <ul class="rentry__points"><li>Designed and implemented the <b>full Flask/MySQL backend</b> for a pedestrian-video playback application served through Apache, including its relational schema and playback workflows.</li>
+      <li>Built SidewalkSim’s Flask/REST dashboard for <b>18 mobility profiles</b> and multithreaded workflows to run, monitor, and aggregate <b>tens of thousands of simulations</b>, with geospatial shapefile exports.</li></ul></div></article>
+      <article class="rentry"><div class="rentry__rail"><span class="rentry__date">Jan 2026 — Present</span><span class="rentry__org">Classify · AI classroom startup</span></div>
+      <div class="rentry__body"><h3 class="rentry__role">Co-Founder — AI Integration</h3>
+      <ul class="rentry__points"><li>Co-founded a <b>six-person startup</b> awarded <b>$2,500 through Franklin CREATE!</b>; lead AI integration across a major product redesign and new backend services.</li>
+      <li>Built the original Flask/Gemini backend for a time-synchronized canvas, with step-level feedback aggregated into assignment and class summaries.</li></ul></div></article>
       <article class="rentry"><div class="rentry__rail"><span class="rentry__date">Jun 2024 — May 2025</span><span class="rentry__org">Georgia Tech · Scheller College of Business</span></div>
       <div class="rentry__body"><h3 class="rentry__role">Research Assistant — NLP &amp; Data Engineering <span class="rentry__pi">(Dr. Tracey Swartz)</span></h3>
       <ul class="rentry__points"><li>Built a Python/Linux <b>ETL pipeline</b> for a 17&nbsp;GB corpus spanning <b>10,000+</b> filings, shareholder letters, and executive web profiles using Selenium, PyMuPDF, OCR, XML, regex, Pandas, and multiprocessing.</li>
-      <li>Replaced a manual collection and extraction workflow with a parallelized pipeline that exported research-ready Excel datasets and routed ambiguous records for human review.</li>
+      <li>Replaced a <b>months-long manual workflow</b> with parallelized collection and extraction, exporting research-ready Excel datasets and routing ambiguous records for human review.</li>
       <li>Engineered <b>TF-IDF</b> features from shareholder communications and wrote protocols used to train and coordinate two interns on web scraping and data processing.</li></ul></div></article></div></div>` },
-    { label:"Education", html:`<div class="work"><header><p class="work__meta"><span class="work__fig">§&nbsp;06</span><span>Education</span></p>
+    { label:"Education", html:`<div class="work"><header><p class="work__meta"><span class="work__fig">§&nbsp;06</span></p>
       <h2 class="work__title">Education</h2><p class="work__lead">Industrial &amp; Systems Engineering at Georgia Tech, focused on operations research, statistics, computing, and applied modeling.</p></header>
       <div class="edu"><div class="edu__main">
       <p class="edu__date">2025 — Expected May 2028</p>
@@ -601,21 +650,19 @@
       <p class="edu__deg">B.S. Industrial &amp; Systems Engineering · <b>4.00 / 4.0 GPA</b></p>
       <dl class="edu__facts">
       <dt>Concentration</dt><dd>Advanced Studies in Operations Research and Statistics</dd>
-      <dt>Minor</dt><dd>Computing &amp; AI</dd>
+      <dt>Minor</dt><dd>Computing &amp; Artificial Intelligence</dd>
       <dt>Honors</dt><dd>Faculty Honors — Fall 2025, Spring 2026</dd>
       <dt>Looking ahead</dt><dd>Planning to apply to Georgia Tech's BS/MS in Computational Science &amp; Engineering.</dd></dl></div>
       <div class="edu__course"><p class="edu__kicker">Relevant coursework</p>
       <ul class="edu__list"><li>Data Structures &amp; Algorithms</li><li>Object-Oriented Programming</li><li>Database Systems</li><li>Probability</li><li>Stochastic Processes</li><li>Linear Algebra</li><li>Simulation Analysis &amp; Design</li><li>Engineering Optimization</li><li>Regression &amp; Forecasting</li><li>Computer Organization &amp; Programming</li></ul></div></div></div>` },
-    { label:"Skills", html:`<div class="work"><header><p class="work__meta"><span class="work__fig">§&nbsp;07</span><span>Skills</span></p>
-      <h2 class="work__title">Skills</h2><p class="work__lead">Tools grouped by how they show up in my work: modeling, data, backend systems, infrastructure, and packaging.</p></header>
+    { label:"Skills", html:`<div class="work"><header><p class="work__meta"><span class="work__fig">§&nbsp;07</span></p>
+      <h2 class="work__title">Skills</h2><p class="work__lead">I work primarily in Python, building models, data pipelines, and backend systems.</p></header>
       <div class="skills">
-      <div class="skl"><p class="skl__cat">Languages &amp; query</p><p class="skl__items">Python · Java · SQL</p><p class="skl__note">Python is my primary language for modeling, backends, data pipelines, and tooling.</p></div>
-      <div class="skl"><p class="skl__cat">ML &amp; modeling</p><p class="skl__items">XGBoost · Scikit-learn · DEAP · CuPy</p><p class="skl__note">Gradient boosting, classical ML, and GPU genetic programming.</p></div>
-      <div class="skl"><p class="skl__cat">Data &amp; numerics</p><p class="skl__items">Pandas · NumPy · Geospatial</p><p class="skl__note">ETL, feature engineering, and large tabular workflows.</p></div>
-      <div class="skl"><p class="skl__cat">Backend &amp; storage</p><p class="skl__items">Flask · REST · MySQL · PostgreSQL · Selenium</p><p class="skl__note">APIs, relational schemas, and data collection.</p></div>
-      <div class="skl"><p class="skl__cat">Infrastructure</p><p class="skl__items">Git · Linux · AWS EC2 · GCP Compute</p><p class="skl__note">Deploying and operating small systems end to end.</p></div>
-      <div class="skl"><p class="skl__cat">Packaging</p><p class="skl__items">PyPI · Setuptools</p><p class="skl__note">Packaged and published desmos.py for installation through PyPI.</p></div></div></div>` },
-    { label:"About", html:`<div class="work"><header><p class="work__meta"><span class="work__fig">§&nbsp;08</span><span>About</span></p>
+      <div class="skl"><p class="skl__cat">Languages</p><p class="skl__items">Python · Java · SQL</p><p class="skl__note">Data processing, application development, and database queries.</p></div>
+      <div class="skl"><p class="skl__cat">ML &amp; data</p><p class="skl__items">XGBoost · Scikit-learn · DEAP · CuPy · Pandas · NumPy</p><p class="skl__note">Feature engineering, geospatial processing, and GPU genetic programming.</p></div>
+      <div class="skl"><p class="skl__cat">Backend &amp; databases</p><p class="skl__items">Flask · REST APIs · MySQL · PostgreSQL</p><p class="skl__note">API design, relational schemas, and simulation job queues.</p></div>
+      <div class="skl"><p class="skl__cat">Tools &amp; infrastructure</p><p class="skl__items">Git · Linux · Apache · Selenium · AWS EC2 · GCP Compute Engine</p><p class="skl__note">Web scraping, automation, and server deployment.</p></div></div></div>` },
+    { label:"About", html:`<div class="work"><header><p class="work__meta"><span class="work__fig">§&nbsp;08</span></p>
       <h2 class="work__title">About</h2><p class="work__lead">I like work that spans the full path from raw data to usable systems.</p></header>
       <div class="about"><div class="about__bio">
       <p>I'm an <b>Industrial &amp; Systems Engineering</b> student at Georgia Tech. I am most drawn to projects where the boundaries blur between data collection, modeling, simulation, and software engineering.</p>
@@ -623,16 +670,27 @@
       <dl class="legend">
       <dt>Honors</dt><dd>Faculty Honors (Fall 2025, Spring 2026) · 3rd Place, HackGwinnett 2024</dd>
       <dt>Writing</dt><dd>Published with the Live Poets Society of New&nbsp;Jersey &amp; Poetry Lab Shanghai</dd></dl>
-      <p class="about__contact">For research, internship, or project conversations: <a href="mailto:czliu@gatech.edu">Email</a> · <a href="https://github.com/chris-zy-liu" target="_blank" rel="noopener">GitHub</a> · <a href="https://linkedin.com/in/chris-zhengyu-liu" target="_blank" rel="noopener">LinkedIn</a> · <a href="Chris_Liu_General_Resume.pdf" target="_blank" rel="noopener">Résumé</a></p></div>
+      <p class="about__contact">For conversations: <a href="mailto:czliu@gatech.edu">Email</a> · <a href="https://github.com/chris-zy-liu" target="_blank" rel="noopener">GitHub</a> · <a href="https://linkedin.com/in/chris-zhengyu-liu" target="_blank" rel="noopener">LinkedIn</a> · <a href="Chris_Liu_General_Resume.pdf" target="_blank" rel="noopener">Résumé</a></p></div>
       <figure class="about__poem"><blockquote class="about__verse">The moon calls, then, behind the towers of the City;<br>It beckons, then, for you, and for me.</blockquote>
       <figcaption>From <cite>The Midnight Hall</cite> — collected at <a href="https://chris-zy-liu.github.io/" target="_blank" rel="noopener">积鱼成水 ↗</a>.</figcaption></figure></div></div>` },
   ];
+  const ROUTES=["home","predict","tools","hobby","experience","education","skills","about"];
+  const routeLinks=Array.from(document.querySelectorAll("[data-route]"));
+  const topbar=document.querySelector(".topbar"), menuToggle=document.querySelector(".topbar__toggle");
+  const mobileSection=document.getElementById("mobile-section");
+  function setMenu(open){
+    topbar.classList.toggle("is-open",open);
+    menuToggle.setAttribute("aria-expanded",String(open));
+    menuToggle.querySelector(".topbar__toggle-hint").textContent=open?"Close −":"Sections +";
+  }
+  menuToggle.addEventListener("click",()=>setMenu(menuToggle.getAttribute("aria-expanded")!=="true"));
+  document.addEventListener("pointerdown",e=>{ if(!topbar.contains(e.target)) setMenu(false); });
   const DESC=[
     "Home base for the site and its live Desmos-generated figure.",
     "Prediction, search, and data-driven modeling projects.",
     "Applications where models, interfaces, and deployment meet.",
     "Personal tools and experiments built around workflows I wanted.",
-    "Research software, simulation workflows, and data pipelines.",
+    "DRIVE Lab, Classify, and Scheller: research software, AI integration, and data pipelines.",
     "Academic background in ISyE, operations research, statistics, and computing.",
     "Technical stack across modeling, data, backend, and infrastructure.",
     "Writing, languages, and the ideas that shape my work."
@@ -669,7 +727,7 @@
   function metrics(){ vw=innerWidth; vh=innerHeight;
     // RING huge vs. a page → node↔chain is a deep ~40× zoom (feels like flying in / pulling way out)
     RING=Math.max(vw,vh)*9; CX=CY=RING*1.3;
-    const overviewFit=vw<700 ? .44 : .656;   // chain fills ~80% of its former footprint (less crowded)
+    const overviewFit=vw<700 ? .62 : .656;   // chain fills ~80% of its former footprint (less crowded)
     step=Math.max(520,vh*0.9); ZOVER=Math.min(vw,vh)*overviewFit/(2*RING);
     // snap the hub onto a grid intersection so the central node sits on a "+" of the
     // engineering grid. Use the overview's major spacing: it lands on a bold crossing at
@@ -756,12 +814,15 @@
     }
     CARDS=[];
     for(let i=0;i<N;i++){ const [cx,cy]=dotCenter(i), r=NODE_R[i];
-      const g=el("g",{class:"c-node"+(i===0?" c-node--hub":"")});
+      const g=el("g",{class:"c-node"+(i===0?" c-node--hub":""),role:"link",tabindex:"-1","aria-label":"Open "+NODES[i].label});
       g.innerHTML=
         `<circle class="c-node-c" cx="${cx.toFixed(1)}" cy="${cy.toFixed(1)}" r="${r.toFixed(1)}"/>`+
         `<text class="c-node-state" x="${cx.toFixed(1)}" y="${(cy+4/Math.max(ZOVER,.001)).toFixed(1)}" text-anchor="middle" font-size="${Math.round(12/Math.max(ZOVER,.001))}">${stateText(i)}</text>`+
         `<text class="c-node-pi" x="${cx.toFixed(1)}" y="${(cy+r+11/Math.max(ZOVER,.001)).toFixed(1)}" text-anchor="middle" font-size="${Math.round(7.5/Math.max(ZOVER,.001))}">π ${(PI[i]*100).toFixed(0)}%</text>`;
-      g.addEventListener("click",()=>centerOnNode(i));   // clicking a node recenters the camera on it
+      g.addEventListener("click",()=>navigateTo(i));
+      g.addEventListener("keydown",e=>{
+        if(e.key==="Enter"||e.key===" "){ e.preventDefault(); navigateTo(i,{focus:true}); }
+      });
       chaing.appendChild(g); CARDS.push(g);
     }
     addSignature();                                       // floating colophon just beyond the ring
@@ -794,6 +855,7 @@
   function buildPages(){
     NODES.forEach((n,i)=>{
       const page=document.createElement("section"); page.className=i===0?"page page--hero":"page";
+      page.id="page-"+ROUTES[i]; page.tabIndex=-1; page.setAttribute("aria-label",n.label);
       if(i===0){
         page.innerHTML=`<div class="page__wrap"><div class="hero">
         <div class="hero__intro">
@@ -802,7 +864,7 @@
           <p class="hero__lede">I work across applied machine learning, data engineering, and simulation. My projects usually start with messy data or a modeling problem and end as software someone can run. The interactive figures on this site are generated with
             <a href="https://github.com/chris-zy-liu/desmos.py" target="_blank" rel="noopener">desmos.py</a>, a Python package I built for creating Desmos graphs programmatically.</p>
           <p class="hero__actions"><a href="Chris_Liu_General_Resume.pdf" target="_blank" rel="noopener">Résumé&nbsp;↗</a><span class="sep">·</span><a href="https://github.com/chris-zy-liu" target="_blank" rel="noopener">GitHub&nbsp;↗</a><span class="sep">·</span><a href="https://linkedin.com/in/chris-zhengyu-liu" target="_blank" rel="noopener">LinkedIn&nbsp;↗</a><span class="sep">·</span><a href="mailto:czliu@gatech.edu">Email</a></p>
-          <dl class="hero__stats"><div><dt>GPA</dt><dd>4.00<span>/4.0</span></dd></div><div><dt>Focus</dt><dd>OR &amp; Statistics</dd></div><div><dt>Minor</dt><dd>Computing &amp; AI</dd></div><div><dt>Based</dt><dd>Atlanta, GA</dd></div></dl>
+          <dl class="hero__stats"><div><dt>GPA</dt><dd>4.00<span>/4.0</span></dd></div><div><dt>Focus</dt><dd>OR &amp; Statistics</dd></div><div><dt>Minor</dt><dd>Computing &amp;<br>Artificial Intelligence</dd></div><div><dt>Based</dt><dd>Atlanta, GA</dd></div></dl>
         </div>
         <figure class="plot"><div class="plot__frame"><div id="calc"></div><canvas class="plot__shot" id="plot-shot"></canvas>
           <span class="reg reg--tl"></span><span class="reg reg--tr"></span><span class="reg reg--bl"></span><span class="reg reg--br"></span>
@@ -1002,6 +1064,8 @@
 
     for(let i=0;i<N;i++){              // only the selected node's page reveals, by flying into it
       const prox=(i===selNode)?clamp(dive,0,1):0, pg=PAGES[i];
+      pg.inert=prox<0.999;
+      pg.setAttribute("aria-hidden",prox<0.999?"true":"false");
       if(hidePages||prox<0.002){ if(pg.style.visibility!=="hidden") pg.style.visibility="hidden"; continue; }
       pg.style.visibility="visible";
       // composited fly-in: scale + opacity only (no per-frame clip-path repaint). opacity ramps over the
@@ -1018,6 +1082,14 @@
     chainwrap.style.visibility=reveal>0.001?"visible":"hidden";
     chainwrap.style.opacity=reveal.toFixed(3);
     chainwrap.classList.toggle("live",reveal>0.5);
+    chainwrap.setAttribute("aria-hidden",reveal>0.5?"false":"true");
+    CARDS.forEach(c=>c.setAttribute("tabindex",reveal>0.5?"0":"-1"));
+    const currentRoute=dive>0.5?ROUTES[selNode]:"map";
+    mobileSection.textContent=dive>0.5?NODES[selNode].label:"The chain";
+    routeLinks.forEach(a=>{
+      if(a.dataset.route===currentRoute) a.setAttribute("aria-current","location");
+      else a.removeAttribute("aria-current");
+    });
 
     // proxy swap: live calc only when settled at native scale; the scaling Mandelbrot canvas stands in during the fly
     const settled=(selNode===0&&cam.zoom>0.999);
@@ -1042,7 +1114,7 @@
     // nothing is lit, and the CSS stroke/opacity transitions fade it dim→bright as the snap lands.
     const selC=dotCenter(selNode);
     const offCenter=Math.hypot(selC[0]-(CX+panX),selC[1]-(CY+panY));
-    snapped = dive>0.02 ? true : (!steering && offCenter<nodeRadius()*0.9);
+    snapped = dive>0.02 ? true : (!dragState && offCenter<nodeRadius()*0.9);
     const lit = snapped ? selNode : -1;   // -1 = between nodes, nothing lit
     setPanel(selNode);
     if(lit!==lastActive){
@@ -1056,18 +1128,22 @@
     const label=selNode===0?"Home":NODES[selNode].label;
     const roHTML = dive>0.5
       ? `<b>${stateText(selNode)} · ${label}</b><span class="sep">·</span>π ${(PI[selNode]*100).toFixed(1)}%`
-      : `<b>The chain · overview</b><span class="sep">·</span>centered on <span class="inf">${stateText(selNode)} ${label}</span>`;
+      : `<b>The chain</b><span class="sep">·</span><span class="inf">${stateText(selNode)} ${label}</span>`;
     if(roHTML!==lastRoHTML){ readout.innerHTML=roHTML; lastRoHTML=roHTML; }   // only re-parse when the text actually changes
+    const hasOverflow=PAGES[selNode].firstElementChild.scrollHeight>PAGES[selNode].firstElementChild.clientHeight+2;
+    const touch=window.matchMedia("(pointer: coarse)").matches;
     const plText = dive>0.6
-      ? "scroll down to return to the chain"
-      : (snapped
-          ? "scroll ↑ to enter the highlighted node · move to steer · click a node to center it"
-          : "move the cursor to center a node · then scroll ↑ to enter");
+      ? (hasOverflow?"scroll to read · Map to explore the chain":(touch?"Map to explore the chain":"scroll down to explore the chain · or choose a section above"))
+      : (touch?"tap to open · drag to pan":"click to open · drag to pan · scroll to zoom");
     if(plText!==lastPlText){ pagerlabel.textContent=plText; lastPlText=plText; }
 
     mkintro.style.opacity=reveal.toFixed(3); mkintro.style.transform=`translateY(${((1-reveal)*18).toFixed(1)}px)`;
-    if(mkpanel) mkpanel.style.opacity=reveal>0.4?reveal.toFixed(3):"0";
-    if(panhint) panhint.classList.toggle("show", reveal>0.5 && dive<0.2 && !panned);
+    mkintro.setAttribute("aria-hidden",reveal>0.5?"false":"true");
+    if(mkpanel){
+      mkpanel.style.opacity=reveal>0.4?reveal.toFixed(3):"0";
+      mkpanel.setAttribute("aria-hidden",reveal>0.5?"false":"true");
+    }
+    if(panhint) panhint.classList.toggle("show", !touch && reveal>0.5 && dive<0.2 && !panned);
 
     // the chain chrome fades in only as the chain appears — so the landing reads like a normal site
     const cop=reveal.toFixed(3);
@@ -1077,16 +1153,20 @@
   }
 
   // ---- input: wheel zooms (up = in), drag pans, render on demand ----
-  let needsRender=true, navRAF=0;
+  let needsRender=true, navRAF=0, navigating=false, navigationTarget=0;
   const ZK=0.0016;                  // wheel delta → dive depth
   addEventListener("wheel",e=>{
+    if(e.ctrlKey||e.target.closest(".topbar, .plot")) return;
+    const wrap=e.target.closest(".page__wrap");
+    // Reading a long node uses ordinary scrolling; Map always provides an exit.
+    if(!navigating&&dive>0.999&&wrap&&wrap.scrollHeight>wrap.clientHeight+2) return;
     e.preventDefault();
     const up=-e.deltaY;             // wheel up = zoom in = dive deeper (like map/Desmos controls)
     // gate: you can only dive INTO a node once it's fully snapped to center — no diving from the dead
     // space between nodes (that's what made the background slide sideways). Checked before cancelling any
     // in-flight snap tween, so a running snap is free to land and unlock the dive.
     if(up>0 && dive<0.04 && !snapped) return;
-    cancelAnimationFrame(navRAF); flying=false;
+    cancelAnimationFrame(navRAF); flying=false; navigating=false;
     if(up>0) diving=true;           // lock onto the selected node while diving in
     // tactile pacing, per direction:
     //   zoom OUT — gentle right at the page (dive~1), accelerating as you pull back to the overview (feels good as-is)
@@ -1094,46 +1174,52 @@
     const accel = up>0 ? 0.3+1.9*Math.pow(dive,1.7) : 0.3+1.9*Math.pow(1-dive,1.7);
     dive=clamp(dive+up*ZK*accel,0,1);
     if(dive<=0.001) diving=false;   // back at the overview → free to reselect by panning
-    lastMoveT=-1e9;                  // any zoom retires the crosshair (it returns on the next mouse move)
     needsRender=true;
   },{passive:false});
 
-  // steer: at the overview the chain trails the cursor under the fixed crosshair; the camera eases
-  // toward a target set by the cursor offset (the "tail"), and once it catches up the nearest node snaps to center.
-  let followX=0, followY=0, steering=false, settleT=0, lastMoveT=-1e9;
-  addEventListener("pointermove",e=>{
-    if(e.pointerType==="touch") return;
-    if(!chainVisible||dive>0.14){ steering=false; return; }      // only steer in the overview
-    cancelAnimationFrame(navRAF); flying=false;                  // the cursor overrides any running snap / fly
-    // map the cursor offset to a pan target with a power curve: the window EDGES reach well past the ring
-    // (a linear gain ran out of screen before the top/bottom nodes, which sit a full RING from center),
-    // while the curve keeps fine control near the center. So every node — and the title block out beyond
-    // the ring — is reachable without leaving the window.
-    const REACH=RING*2.4, CURVE=1.6;
-    // radial mapping → the reachable region is a CIRCLE of radius REACH. (Clamping each axis on its own made
-    // it a square whose corners reached √2 farther than its sides.) Normalize both axes by the same reference
-    // so equal mouse travel pans equally in x and y, curve the magnitude, then push along the cursor direction.
-    const ref=Math.min(vw,vh)/2;
-    const ox=(e.clientX-vw/2)/ref, oy=(e.clientY-vh/2)/ref;
-    const mag=Math.hypot(ox,oy), reach=Math.pow(Math.min(mag,1),CURVE)*REACH, u=mag>1e-6?reach/mag:0;
-    followX=ox*u; followY=oy*u;
-    steering=true; settleT=0; lastMoveT=performance.now(); panned=true; needsRender=true;
+  // Pan only while a pointer is held down. A short tap still opens a node.
+  let dragState=null, suppressNodeClick=false;
+  chainwrap.addEventListener("pointerdown",e=>{
+    if(e.button!==0||!e.isPrimary||!chainVisible||dive>0.04||navigating) return;
+    cancelAnimationFrame(navRAF); flying=false; diving=false;
+    suppressNodeClick=false;
+    dragState={id:e.pointerId,x:e.clientX,y:e.clientY,px:panX,py:panY,moved:false};
   });
-  function steerTick(dt){
-    if(!steering) return;
-    const k=1-Math.pow(0.003,dt/1000);                           // gentler ease → the chain tails behind, a touch slower
-    panX+=(followX-panX)*k; panY+=(followY-panY)*k; needsRender=true;
-    if(Math.hypot(followX-panX,followY-panY)<RING*0.012){        // caught up to the cursor → consider settling
-      settleT+=dt;
-      if(settleT>160){
-        steering=false;
-        const px=CX+panX, py=CY+panY;                            // rest point (sheet coords); snap only if it lands near a node
-        let best=0,bd=Infinity; for(let i=0;i<N;i++){ const c=dotCenter(i); const d=Math.hypot(c[0]-px,c[1]-py); if(d<bd){bd=d;best=i;} }
-        if(bd<RING*0.34){ selNode=best; const c=dotCenter(best); tweenPan(c[0]-CX,c[1]-CY,reduce?1:340); }   // near a node → pull it to center
-        // otherwise rest where the cursor left it — free to hang between nodes
+  addEventListener("pointermove",e=>{
+    if(!dragState||e.pointerId!==dragState.id) return;
+    const dx=e.clientX-dragState.x, dy=e.clientY-dragState.y;
+    if(!dragState.moved&&Math.hypot(dx,dy)<5) return;
+    if(!dragState.moved){
+      dragState.moved=true;
+      chainwrap.setPointerCapture(e.pointerId);
+      chainwrap.classList.add("is-dragging");
+    }
+    // The map follows the finger or mouse at its current screen scale.
+    panX=clamp(dragState.px-dx/ZOVER,-RING*1.6,RING*1.6);
+    panY=clamp(dragState.py-dy/ZOVER,-RING*1.6,RING*1.6);
+    panned=true; needsRender=true;
+  });
+  function endDrag(e){
+    if(!dragState||e.pointerId!==dragState.id) return;
+    const moved=dragState.moved;
+    dragState=null;
+    chainwrap.classList.remove("is-dragging");
+    if(chainwrap.hasPointerCapture(e.pointerId)) chainwrap.releasePointerCapture(e.pointerId);
+    suppressNodeClick=moved;
+    if(moved){
+      reselect();
+      const c=dotCenter(selNode);
+      if(Math.hypot(c[0]-CX-panX,c[1]-CY-panY)<nodeRadius()*1.4){
+        tweenPan(c[0]-CX,c[1]-CY,reduce?1:200);
       }
-    } else settleT=0;
+      needsRender=true;
+    }
   }
+  addEventListener("pointerup",endDrag);
+  addEventListener("pointercancel",endDrag);
+  chainwrap.addEventListener("click",e=>{
+    if(suppressNodeClick&&e.detail!==0){ e.preventDefault(); e.stopImmediatePropagation(); }
+  },true);
 
   function tweenPan(tx,ty,dur){     // ease pan so the selected node snaps to screen-center
     cancelAnimationFrame(navRAF); flying=true;
@@ -1142,28 +1228,92 @@
       panX=lerp(fx,tx,e); panY=lerp(fy,ty,e); needsRender=true;
       if(r<1) navRAF=requestAnimationFrame(fr); else flying=false; })(performance.now());
   }
-  function centerOnNode(i){          // node click: glide the camera so node i sits at center (no dive)
-    selNode=i; const c=dotCenter(i); tweenPan(c[0]-CX,c[1]-CY,reduce?1:420);
+  // One interruptible flight: pull out of the current node, cross the map, then enter.
+  function navigateTo(i,{instant=false,historyMode="push",focus=false}={}){
+    setMenu(false);
+    cancelAnimationFrame(navRAF);
+    navigationTarget=i;
+    dragState=null; chainwrap.classList.remove("is-dragging");
+    navigating=true; flying=true;
+    const route=i<0?"map":ROUTES[i];
+    const destination=i<0?[CX,CY]:dotCenter(i);
+    const tx=destination[0]-CX, ty=destination[1]-CY;
+    function finish(){
+      panX=tx; panY=ty; dive=i<0?0:1;
+      if(i>=0) selNode=i;
+      diving=i>=0; flying=false; navigating=false; snapped=true;
+      needsRender=true; render();
+      if(historyMode==="push"&&location.hash!=="#"+route) history.pushState(null,"","#"+route);
+      if(focus&&i>=0) PAGES[i].focus({preventScroll:true});
+    }
+    if(instant||reduce||(i===selNode&&dive>0.999)){ finish(); return; }
+    if(dive>0.999){
+      const source=dotCenter(selNode); panX=source[0]-CX; panY=source[1]-CY;
+    }
+    const startDive=dive, fx=panX, fy=panY;
+    const outMs=440*startDive;
+    const distance=Math.hypot(tx-fx,ty-fy);
+    const panMs=distance>1?Math.min(460,260+distance/RING*90):0;
+    const inMs=i<0?0:500;
+    const started=performance.now();
+    function frame(now){
+      const t=now-started;
+      if(t<outMs){ dive=startDive*(1-easeIO(t/outMs)); }
+      else if(t<outMs+panMs){
+        dive=0; diving=false;
+        const p=easeIO((t-outMs)/panMs); panX=lerp(fx,tx,p); panY=lerp(fy,ty,p);
+      } else if(t<outMs+panMs+inMs){
+        panX=tx; panY=ty; selNode=i; diving=true;
+        dive=easeIO((t-outMs-panMs)/inMs);
+      } else { finish(); return; }
+      needsRender=true;
+      navRAF=requestAnimationFrame(frame);
+    }
+    navRAF=requestAnimationFrame(frame);
   }
+  routeLinks.forEach(a=>a.addEventListener("click",e=>{
+    if(e.button!==0||e.metaKey||e.ctrlKey||e.shiftKey||e.altKey) return;
+    e.preventDefault();
+    navigateTo(ROUTES.indexOf(a.dataset.route),{focus:e.detail===0});
+  }));
+  function routeFromHash(){
+    const route=location.hash.slice(1);
+    if(route==="map"||route==="walk") return -1;
+    if(route==="contact") return 7;
+    return Math.max(0,ROUTES.indexOf(route));
+  }
+  addEventListener("hashchange",()=>navigateTo(routeFromHash(),{historyMode:"none"}));
+  addEventListener("keydown",e=>{
+    if(e.key==="Escape"&&menuToggle.getAttribute("aria-expanded")==="true"){
+      e.preventDefault(); setMenu(false); menuToggle.focus(); return;
+    }
+    if(e.key==="Escape"&&!e.target.closest(".plot")){
+      e.preventDefault(); navigateTo(-1);
+      document.querySelector('[data-route="map"]').focus();
+    }
+  });
 
   function loop(now){ const dt=loop.last?now-loop.last:16; loop.last=now;
-    steerTick(dt);
     if(needsRender){ render(); needsRender=false; }
-    // crosshair shows only while the mouse is actively steering at the overview; it fades when motion stops or on any zoom
-    if(crosshair) crosshair.style.opacity=(reveal>0.5 && dive<0.18 && !flying && now-lastMoveT<400)?"1":"0";
+    if(crosshair) crosshair.style.opacity=dragState&&dragState.moved?"1":"0";
     if(chainVisible&&!reduce) agentTick(dt);
     requestAnimationFrame(loop);
   }
 
   // ---- init: land inside Home (the hero); scroll down to discover the chain ----
   metrics(); sizeGrid(); buildChain(); buildPages();
-  selNode=0; dive=1; diving=true; needsRender=true; render(); mountHero();
+  navigateTo(routeFromHash(),{instant:true,historyMode:"none"}); mountHero();
   if(!heroMounted) addEventListener("load",mountHero,{once:true});
   // mount the e-field demo eagerly (deferred) so it's ready before you ever dive into the desmos.py node
   const efInit=()=>{ mountEfield(); if(!efMounted) addEventListener("load",mountEfield,{once:true}); };
   requestAnimationFrame(efInit);
   requestAnimationFrame(loop);
-  addEventListener("resize",()=>{ metrics(); sizeGrid(); buildChain(); needsRender=true; needsCalcResize=true; },{passive:true});
+  addEventListener("resize",()=>{
+    const route=navigating?navigationTarget:(dive>0.5?selNode:-1);
+    metrics(); sizeGrid(); buildChain(); lastActive=-99;
+    needsCalcResize=true; efSettled2=false;
+    navigateTo(route,{instant:true,historyMode:"none"});
+  },{passive:true});
 
   // ---- a little something for anyone who opens the console ----
   console.log("%c  made with love by Chris Zhengyu Liu · 2026  ",

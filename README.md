@@ -12,8 +12,12 @@ no build step).
   Desmos GraphingCalculator API, with the chrome stripped and recolored to match the page.
 - **Markov-chain site map** — the sections are modeled as a Markov chain. An agent does a
   random walk over the transition matrix `P`; nodes are sized by the stationary
-  distribution `π`. The §00 diagram, the docked minimap, and the per-section state tags
-  all read from the same matrix (`js/markov.js`).
+  distribution `π`. The chain, navigation, and section content live in `index.html`.
+- **Persistent section links** — navigate by zooming out through the chain and into the
+  selected node. Links support section URLs and browser Back/Forward. Map returns to
+  the overview; drag to pan, and open nodes by click, tap, or keyboard. On phones,
+  a section menu replaces the desktop ribbon while Home and Map remain available.
+  Long sections scroll inside their node. Reduced-motion preferences skip the flight animation.
 - **Bespoke SVG figures** for each project, plus scroll-reveal animations.
 
 ## Run locally
@@ -28,13 +32,14 @@ python -m http.server 8123
 ## Project structure
 
 ```
-index.html        # the page
+index.html        # chain view, content, styles, and navigation
+linear.html       # redirects old links to the chain, preserving section hashes
 404.html          # styled not-found page
 favicon.svg
-css/styles.css    # all styles + design tokens
+css/styles.css    # retained styles from the former linear view
 js/mandelbrot.js  # builds/drives the hero desmos.py embed
-js/markov.js      # the Markov chain: diagram, minimap, state tags
-js/main.js        # scroll-reveal + hero figure HUD wiring
+js/markov.js      # retained former linear-view map
+js/main.js        # retained former linear-view interactions
 src/              # image assets
 lab/              # scratch experiments (not linked from the site)
 ```
