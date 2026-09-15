@@ -17,7 +17,9 @@ no build step).
   selected node. Links support section URLs and browser Back/Forward. Map returns to
   the overview; drag to pan, and open nodes by click, tap, or keyboard. On phones,
   a section menu replaces the desktop ribbon while Home and Map remain available.
-  Long sections scroll inside their node. Reduced-motion preferences skip the flight animation.
+  Long sections scroll inside their node without visible scrollbars. The desktop hero
+  fits the available viewport height, and wheel input over it always controls the chain.
+  Reduced-motion preferences skip the flight animation.
 - **Bespoke SVG figures** for each project, plus scroll-reveal animations.
 
 ## Run locally
