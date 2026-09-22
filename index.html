@@ -307,6 +307,20 @@
     letter-spacing:.04em; color:var(--ink-soft); background:rgba(246,243,234,.82); border:1px solid var(--grid-bold);
     padding:.2rem .42rem; pointer-events:none; }
 
+  .proc--demo{ gap:1.5rem; }
+  .proc--demo .proc__head{ max-width:none; }
+  .proc--demo .proc__desc{ gap:.85rem; }
+  .proc--demo .proc__desc > p:not(.compiler-path){ font-size:clamp(1rem,.9rem + .2vw,1.1rem); line-height:1.5; }
+  .proc__desc .compiler-path{ font: .73rem/1.7 var(--font-mono); color:var(--blue); padding:.7rem 0; border-block:1px solid var(--grid-bold); }
+  .compiler-path span{ color:var(--accent); padding-inline:.15rem; }
+  .code-note summary{ font: .78rem/1.5 var(--font-mono); color:var(--blue); cursor:pointer; padding:.3rem 0; }
+  .code-note summary:focus-visible{ outline:2px solid var(--blue); outline-offset:4px; }
+  .code-note pre{ white-space:pre-wrap; overflow-wrap:anywhere; background:var(--paper-2); border:1px solid var(--grid-bold); padding:1rem; font:.72rem/1.65 var(--font-mono); }
+  .proc__desc .code-note__caption{ font-size:.86rem; line-height:1.5; }
+  .secondary-project{ border-top:1px solid var(--grid-bold); padding-top:.8rem; }
+  .proc__desc .secondary-project p{ font-size:.9rem; line-height:1.5; }
+  .rentry__points a{ color:var(--blue); text-underline-offset:3px; }
+
   /* RESEARCH */
   .sec-head{ margin-bottom:clamp(1.6rem,3vh,2.6rem); }
   .sec-no{ font-family:var(--font-mono); font-size:.78rem; letter-spacing:.16em; color:var(--accent); text-transform:uppercase; }
@@ -498,7 +512,7 @@
       <a href="#experience" data-route="experience">Experience</a>
       <a href="#predict" data-route="predict">Prediction</a>
       <a href="#tools" data-route="tools">Tools &amp; Apps</a>
-      <a href="#hobby" data-route="hobby">Hobby</a>
+      <a href="#hobby" data-route="hobby">Open source</a>
       <a href="#education" data-route="education">Education</a>
       <a href="#skills" data-route="skills">Skills</a>
       <a href="#about" data-route="about">About</a>
@@ -578,12 +592,31 @@
     return `<article class="proc proc--demo">
       <header class="proc__head">
         <p class="work__meta"><span class="work__fig">§&nbsp;04</span></p>
-        <h2 class="proc__title">Hobby projects</h2>
+        <h2 class="proc__title">Open Source &amp; Experiments</h2>
       </header>
       <div class="proc__body proc__body--demo">
         <div class="proc__desc">
-          <p>Some tools start as small annoyances I cannot stop thinking about. <a href="https://github.com/chris-zy-liu/desmos.py"><b>desmos.py</b></a> is an open-source Python package, published on <b>PyPI</b>, that converts a strict subset of Python into Desmos expressions, state JSON, and self-contained interactive HTML graphs. The Mandelbrot figure in the Home state and the electric-field demo in this state are both generated with it.</p>
-          <p><a href="https://github.com/chris-zy-liu/ibus-stroke-order-input"><b>ibus-stroke-order-input</b></a> is a Linux IBus input method I use for Chinese typing. It maps the five primary strokes of Regular Script onto five keys, letting me type simplified and traditional characters by stroke order.</p>
+          <p><a href="https://github.com/chris-zy-liu/desmos.py"><b>desmos.py</b></a> is a Python package I built and published on PyPI to create interactive Desmos graphs from code. It compiles a strict subset of Python, including vectorized math, geometry, and interactive controls.</p>
+          <p class="compiler-path" aria-label="Compilation pipeline">Python AST <span aria-hidden="true">→</span> Desmos expressions &amp; state <span aria-hidden="true">→</span> interactive HTML</p>
+          <p>Unsupported syntax produces <b>line-specific translation errors</b>. I validated the translator with <b>37 golden-file tests across Python 3.10–3.14</b>. The Mandelbrot on Home and the electric field here are generated with the package.</p>
+          <details class="code-note">
+            <summary>Inside the electric-field example</summary>
+            <pre><code>@g.func
+def Ex(p):
+    return Exfrom(p, 1, P1) + Exfrom(p, -1, P2)
+
+g.field(
+    Ex, Ey,
+    x_range=(-3, 3, 13),
+    y_range=(-2, 2, 9),
+    length=0.25,
+    head_size=0.08,
+    color="#000000",
+)
+g.to_html("electric_field.html")</code></pre>
+            <p class="code-note__caption">Excerpt from <a href="https://github.com/chris-zy-liu/desmos.py/blob/master/examples/electric_field.py">electric_field.py</a>; the full example defines the charges and field helpers. Drag either charge in the graph to see the field respond.</p>
+          </details>
+          <aside class="secondary-project"><p><a href="https://github.com/chris-zy-liu/ibus-stroke-order-input"><b>Also: a Chinese input method for Linux</b></a><br>I built an IBus tool that maps five primary strokes onto five keys, letting me type simplified and traditional characters by stroke order.</p></aside>
         </div>
         <figure class="plot plot--demo">
           <div class="plot__frame"><div id="efcalc"></div><canvas class="plot__shot" id="ef-shot"></canvas>
@@ -600,16 +633,16 @@
   }
   // ── project specimens (grouped by theme into the merged project nodes below) ──
   const SPEC={
-    bus:{ name:"GT Bus Arrival Prediction", fig:"2", date:"May–Sep 2026", live:true, svg:FIG.route,
-      desc:`I processed <b>3.47 million GPS observations</b> from Georgia Tech's public transit API into <b>3.16 million labeled arrival examples</b>. Using 14 position, motion, time, and stop-context features, I trained a <b>histogram gradient-boosted regression model</b> that achieved <b>68.8-second mean absolute error</b> on a 100,000-example chronological holdout—43.8% below a per-stop median baseline. The dashboard serves live positions and next-stop predictions every 15 seconds, independently of historical recording.`,
-      tags:["Python","scikit-learn","Pandas","Geospatial","Vultr"],
-      links:`<a href="/bus/">Live demo ↗</a><a href="/bus/history/">Trip history ↗</a>` },
+    bus:{ name:"GT Bus Arrival Prediction", fig:"2", date:"Apr–Sep 2026", live:true, svg:FIG.route,
+      desc:`I built an end-to-end transit prediction system: <b>3.47 million GPS observations</b> became <b>3.16 million labeled arrival examples</b>, with sampled training on a <b>1 GB Linux VPS</b>. A histogram gradient-boosted candidate achieved <b>68.8-second mean absolute error</b> on 100,000 chronologically held-out examples with GPS-inferred arrival labels, before final refitting. Live positions and predictions refresh every 15 seconds; history recording is paused.`,
+      tags:["Python","scikit-learn","SQLite","MapLibre","Linux"],
+      links:`<a href="bus/method/">Method &amp; evaluation ↗</a><a href="/bus/">Live demo ↗</a><a href="/bus/history/">Trip history ↗</a>` },
     sym:{ name:"Evolutionary Symbolic Regression", fig:"3", date:"Aug 2025–May 2026", svg:FIG.tree,
       desc:`A GPU-accelerated <b>genetic-programming</b> experiment for evolving interpretable trading rules over intraday cryptocurrency data. I built a stack-machine tree evaluator, CUDA&nbsp;/&nbsp;CuPy scoring path, Binance-to-Parquet data pipeline, multi-timeframe feature generation, and out-of-sample backtesting tools for tracking P&amp;L, drawdown, and rolling Sharpe.`,
       tags:["DEAP","CuPy","CUDA","NumPy","Parquet"],
       links:`<a href="https://github.com/chris-zy-liu/symbolic-evolution-of-trading-agents">GitHub ↗</a>` },
-    classify:{ name:"Classify — AI classroom platform", fig:"5", date:"Jan 2026–Present", svg:FIG.canvas,
-      desc:`The original Classify prototype used a time-synchronized canvas to capture a student's work step by step. I built its <b>Flask</b> backend and <b>Gemini</b> integration, then an aggregation layer that turns step-level feedback into assignment summaries and class reports. Student work and results were stored in <b>PostgreSQL</b>; the prototype was deployed on AWS EC2 and Vercel.`,
+    classify:{ name:"Classify LLC — AI classroom platform", fig:"5", date:"Jan 2026–Present", svg:FIG.canvas,
+      desc:`For Classify’s original prototype, I built the <b>Flask backend and Gemini integration</b> around a time-synchronized canvas. Student work was analyzed step by step, then a hierarchical aggregation layer turned targeted feedback into <b>assignment summaries and class-performance reports</b>. I persisted work and results in PostgreSQL and deployed the prototype on AWS EC2 and Vercel. This prototype established the workflow; I now lead AI integration across the ongoing product redesign.`,
       tags:["Flask","Gemini API","PostgreSQL","AWS EC2","Vercel"],
       links:"" },
     deco:{ name:"DecoAR", fig:"6", date:"Feb 2026 · AR / generative 3D prototype", svg:FIG.ar,
@@ -630,18 +663,19 @@
     { label:"Home" },
     { label:"Prediction", html:groupPage(GROUPS.predict) },
     { label:"Tools & Apps", html:groupPage(GROUPS.tools) },
-    { label:"Hobby projects", html:desmosPage() },
+    { label:"Open source", html:desmosPage() },
     { label:"Experience", html:`<div class="work work--research"><header><p class="work__meta"><span class="work__fig">§&nbsp;05</span></p>
       <h2 class="work__title">Experience</h2><p class="work__lead">Research software, data pipelines, and an AI classroom startup.</p></header>
       <div class="research">
       <article class="rentry"><div class="rentry__rail"><span class="rentry__date">Jan 2026 — Present</span><span class="rentry__org">DRIVE Lab · Georgia Tech<br>Civil &amp; Environmental Engineering</span><span class="rentry__org">Programming Research Assistant</span></div>
       <div class="rentry__body"><h3 class="rentry__role">Co-Lead — Database, Dashboard &amp; Simulations</h3>
       <ul class="rentry__points"><li>Designed and implemented the <b>full Flask/MySQL backend</b> for a pedestrian-video playback application served through Apache, including its relational schema and playback workflows.</li>
-      <li>Built SidewalkSim’s Flask/REST dashboard for <b>18 mobility profiles</b> and multithreaded workflows to run, monitor, and aggregate <b>tens of thousands of simulations</b>, with geospatial shapefile exports.</li></ul></div></article>
-      <article class="rentry"><div class="rentry__rail"><span class="rentry__date">Jan 2026 — Present</span><span class="rentry__org">Classify · AI classroom startup</span></div>
+      <li>Built SidewalkSim’s Flask/REST dashboard for <b>18 mobility profiles</b> and multithreaded workflows to run, monitor, and aggregate <b>tens of thousands of simulations</b>, with geospatial shapefile exports.</li>
+      <li>Developed a <b>network-based methodology</b> to locate ramps and curb cuts detected by an existing machine-vision model; validated GPS drift correction using video odometry against manually verified routes. <b>Second author</b> on a paper submitted to the Transportation Research Board (TRB).</li></ul></div></article>
+      <article class="rentry"><div class="rentry__rail"><span class="rentry__date">Jan 2026 — Present</span><span class="rentry__org">Classify LLC · AI classroom startup</span></div>
       <div class="rentry__body"><h3 class="rentry__role">Co-Founder — AI Integration</h3>
-      <ul class="rentry__points"><li>Co-founded a <b>six-person startup</b> awarded <b>$2,500 through Franklin CREATE!</b>; lead AI integration across a major product redesign and new backend services.</li>
-      <li>Built the original Flask/Gemini backend for a time-synchronized canvas, with step-level feedback aggregated into assignment and class summaries.</li></ul></div></article>
+      <ul class="rentry__points"><li>Co-founded a <b>six-person startup</b> awarded <b>$7,500 through Franklin CREATE!</b>; lead AI integration across a major product redesign and new backend services.</li>
+      <li>Designed the original Flask/Gemini backend and hierarchical feedback workflow. The prototype’s architecture is described in <a href="#tools">Tools &amp; Applications</a>.</li></ul></div></article>
       <article class="rentry"><div class="rentry__rail"><span class="rentry__date">Jun 2024 — May 2025</span><span class="rentry__org">Georgia Tech · Scheller College of Business</span></div>
       <div class="rentry__body"><h3 class="rentry__role">Research Assistant — NLP &amp; Data Engineering <span class="rentry__pi">(Dr. Tracey Swartz)</span></h3>
       <ul class="rentry__points"><li>Built a Python/Linux <b>ETL pipeline</b> for a 17&nbsp;GB corpus spanning <b>10,000+</b> filings, shareholder letters, and executive web profiles using Selenium, PyMuPDF, OCR, XML, regex, Pandas, and multiprocessing.</li>
@@ -694,7 +728,7 @@
     "Home base for the site and its live Desmos-generated figure.",
     "Prediction, search, and data-driven modeling projects.",
     "Applications where models, interfaces, and deployment meet.",
-    "Personal tools and experiments built around workflows I wanted.",
+    "Open-source Python tooling, compiler design, and interactive experiments.",
     "DRIVE Lab, Classify, and Scheller: research software, AI integration, and data pipelines.",
     "Academic background in ISyE, operations research, statistics, and computing.",
     "Technical stack across modeling, data, backend, and infrastructure.",
@@ -866,8 +900,8 @@
         <div class="hero__intro">
           <p class="eyebrow"><span class="dot"></span> <span class="work__fig">§&nbsp;01</span> · B.S. Industrial &amp; Systems Engineering · Georgia Tech</p>
           <h1 class="hero__title"><span class="line">I build systems</span><span class="line">that <em>simulate,</em></span><span class="line"><em>predict,</em> and <em>evolve.</em></span></h1>
-          <p class="hero__lede">I work across applied machine learning, data engineering, and simulation. My projects usually start with messy data or a modeling problem and end as software someone can run. The interactive figures on this site are generated with
-            <a href="https://github.com/chris-zy-liu/desmos.py" target="_blank" rel="noopener">desmos.py</a>, a Python package I built for creating Desmos graphs programmatically.</p>
+          <p class="hero__lede">I’m interested in how mathematical ideas become working software: predicting bus arrivals, exploring accessible routes, and turning Python into interactive graphs. I study Industrial &amp; Systems Engineering at Georgia Tech and work across machine learning, data engineering, and simulation. The Mandelbrot beside this introduction was generated with
+            <a href="https://github.com/chris-zy-liu/desmos.py" target="_blank" rel="noopener">desmos.py</a>, an open-source Python package I built.</p>
           <p class="hero__actions"><a href="Chris_Liu_General_Resume.pdf" target="_blank" rel="noopener">Résumé&nbsp;↗</a><span class="sep">·</span><a href="https://github.com/chris-zy-liu" target="_blank" rel="noopener">GitHub&nbsp;↗</a><span class="sep">·</span><a href="https://linkedin.com/in/chris-zhengyu-liu" target="_blank" rel="noopener">LinkedIn&nbsp;↗</a><span class="sep">·</span><a href="mailto:czliu@gatech.edu">Email</a></p>
           <dl class="hero__stats"><div><dt>GPA</dt><dd>4.00<span>/4.0</span></dd></div><div><dt>Focus</dt><dd>OR &amp; Statistics</dd></div><div><dt>Minor</dt><dd>Computing &amp;<br>Artificial Intelligence</dd></div><div><dt>Based</dt><dd>Atlanta, GA</dd></div></dl>
         </div>
@@ -1130,7 +1164,7 @@
     if(settled&&!homeSettled&&heroApi&&heroApi.resize) heroApi.resize();
     homeSettled=settled;
 
-    // electric-field proxy swap (desmos.py node = Hobby, index 3): the scaling proxy canvas stands in during the
+    // electric-field proxy swap (desmos.py node = Open source, index 3): the scaling proxy canvas stands in during the
     // fly; the live calc only shows once settled at native scale, so you never see a CSS-stretched Desmos bitmap.
     const efOn=(selNode===3&&cam.zoom>0.999);
     const efShow=(selNode===3&&efProxyReady&&!efOn);

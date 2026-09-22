@@ -67,6 +67,14 @@ for rich link previews on LinkedIn/Twitter. (SVG isn't supported as an OG image 
 
 ## Notes
 
+- The bus project’s [method and evaluation page](bus/method/index.html) explains
+  trajectory labeling, bounded-memory training, and the distinction between the
+  evaluated candidate and final refit. Its styles live in `css/case-study.css`.
+- The Open Source & Experiments section keeps the existing `#hobby` URL, with an
+  expandable excerpt from the real electric-field example alongside the live demo.
+- Content updated September 22, 2026: DRIVE asset-geolocation methodology and TRB
+  submission credit; Classify LLC’s $7,500 funding and prototype/current-role split.
+
 - The Desmos API key in `index.html` is a public, domain-embeddable key — safe to commit.
 - Content is kept to claims that are defensible; see the résumé content bank for the
   source of truth.
