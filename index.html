@@ -310,13 +310,7 @@
   .proc--demo{ gap:1.5rem; }
   .proc--demo .proc__head{ max-width:none; }
   .proc--demo .proc__desc{ gap:.85rem; }
-  .proc--demo .proc__desc > p:not(.compiler-path){ font-size:clamp(1rem,.9rem + .2vw,1.1rem); line-height:1.5; }
-  .proc__desc .compiler-path{ font: .73rem/1.7 var(--font-mono); color:var(--blue); padding:.7rem 0; border-block:1px solid var(--grid-bold); }
-  .compiler-path span{ color:var(--accent); padding-inline:.15rem; }
-  .code-note summary{ font: .78rem/1.5 var(--font-mono); color:var(--blue); cursor:pointer; padding:.3rem 0; }
-  .code-note summary:focus-visible{ outline:2px solid var(--blue); outline-offset:4px; }
-  .code-note pre{ white-space:pre-wrap; overflow-wrap:anywhere; background:var(--paper-2); border:1px solid var(--grid-bold); padding:1rem; font:.72rem/1.65 var(--font-mono); }
-  .proc__desc .code-note__caption{ font-size:.86rem; line-height:1.5; }
+  .proc--demo .proc__desc > p{ font-size:clamp(1rem,.9rem + .2vw,1.1rem); line-height:1.5; }
   .secondary-project{ border-top:1px solid var(--grid-bold); padding-top:.8rem; }
   .proc__desc .secondary-project p{ font-size:.9rem; line-height:1.5; }
   .rentry__points a{ color:var(--blue); text-underline-offset:3px; }
@@ -596,26 +590,7 @@
       </header>
       <div class="proc__body proc__body--demo">
         <div class="proc__desc">
-          <p><a href="https://github.com/chris-zy-liu/desmos.py"><b>desmos.py</b></a> is a Python package I built and published on PyPI to create interactive Desmos graphs from code. It compiles a strict subset of Python, including vectorized math, geometry, and interactive controls.</p>
-          <p class="compiler-path" aria-label="Compilation pipeline">Python AST <span aria-hidden="true">→</span> Desmos expressions &amp; state <span aria-hidden="true">→</span> interactive HTML</p>
-          <p>Unsupported syntax produces <b>line-specific translation errors</b>. I validated the translator with <b>37 golden-file tests across Python 3.10–3.14</b>. The Mandelbrot on Home and the electric field here are generated with the package.</p>
-          <details class="code-note">
-            <summary>Inside the electric-field example</summary>
-            <pre><code>@g.func
-def Ex(p):
-    return Exfrom(p, 1, P1) + Exfrom(p, -1, P2)
-
-g.field(
-    Ex, Ey,
-    x_range=(-3, 3, 13),
-    y_range=(-2, 2, 9),
-    length=0.25,
-    head_size=0.08,
-    color="#000000",
-)
-g.to_html("electric_field.html")</code></pre>
-            <p class="code-note__caption">Excerpt from <a href="https://github.com/chris-zy-liu/desmos.py/blob/master/examples/electric_field.py">electric_field.py</a>; the full example defines the charges and field helpers. Drag either charge in the graph to see the field respond.</p>
-          </details>
+          <p><a href="https://github.com/chris-zy-liu/desmos.py"><b>desmos.py</b></a> is an open-source Python package I built and published on PyPI. It turns Python code into interactive Desmos graphs, including the Mandelbrot on Home and the electric field here.</p>
           <aside class="secondary-project"><p><a href="https://github.com/chris-zy-liu/ibus-stroke-order-input"><b>Also: a Chinese input method for Linux</b></a><br>I built an IBus tool that maps five primary strokes onto five keys, letting me type simplified and traditional characters by stroke order.</p></aside>
         </div>
         <figure class="plot plot--demo">
@@ -636,7 +611,7 @@ g.to_html("electric_field.html")</code></pre>
     bus:{ name:"GT Bus Arrival Prediction", fig:"2", date:"Apr–Sep 2026", live:true, svg:FIG.route,
       desc:`I built an end-to-end transit prediction system: <b>3.47 million GPS observations</b> became <b>3.16 million labeled arrival examples</b>, with sampled training on a <b>1 GB Linux VPS</b>. A histogram gradient-boosted candidate achieved <b>68.8-second mean absolute error</b> on 100,000 chronologically held-out examples with GPS-inferred arrival labels, before final refitting. Live positions and predictions refresh every 15 seconds; history recording is paused.`,
       tags:["Python","scikit-learn","SQLite","MapLibre","Linux"],
-      links:`<a href="bus/method/">Method &amp; evaluation ↗</a><a href="/bus/">Live demo ↗</a><a href="/bus/history/">Trip history ↗</a>` },
+      links:`<a href="/bus/">Live demo ↗</a><a href="/bus/history/">Trip history ↗</a>` },
     sym:{ name:"Evolutionary Symbolic Regression", fig:"3", date:"Aug 2025–May 2026", svg:FIG.tree,
       desc:`A GPU-accelerated <b>genetic-programming</b> experiment for evolving interpretable trading rules over intraday cryptocurrency data. I built a stack-machine tree evaluator, CUDA&nbsp;/&nbsp;CuPy scoring path, Binance-to-Parquet data pipeline, multi-timeframe feature generation, and out-of-sample backtesting tools for tracking P&amp;L, drawdown, and rolling Sharpe.`,
       tags:["DEAP","CuPy","CUDA","NumPy","Parquet"],
