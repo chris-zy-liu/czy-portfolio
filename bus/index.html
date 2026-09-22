@@ -1,0 +1,1065 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GT Bus Tracker | Chris Liu</title>
+<meta name="description" content="Live Georgia Tech bus positions and machine-learning arrival predictions, with searchable trip history.">
+<link rel="canonical" href="https://czliu.dev/bus/">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700;800;900&family=Archivo+Expanded:wght@600;700;800;900&family=Spline+Sans+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css"/>
+<script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
+<style>
+:root {
+  --paper:   #F2EFE6;   /* warm off-white canvas      */
+  --paper-2: #FAF8F2;   /* raised cards / panels      */
+  --ink:     #11110F;   /* near-black type & rules    */
+  --ink-2:   #57564E;   /* secondary text             */
+  --ink-3:   #908E83;   /* tertiary / muted           */
+  --hair:    rgba(17,17,15,0.12);
+  --signal:  #E3120B;   /* Vignelli red — LIVE / error*/
+  --font-display: 'Archivo Expanded', 'Archivo', sans-serif;
+  --font-body:    'Archivo', sans-serif;
+  --font-mono:    'Spline Sans Mono', monospace;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+html, body { height: 100%; }
+
+body {
+  font-family: var(--font-body);
+  background: var(--paper);
+  color: var(--ink);
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  -webkit-font-smoothing: antialiased;
+}
+
+.mono { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+
+/* ── Header ─────────────────────────────────────────────── */
+header {
+  background: var(--paper);
+  border-bottom: 2px solid var(--ink);
+  padding: 0 22px;
+  height: 64px;
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  position: relative;
+  z-index: 1000;
+  gap: 22px;
+}
+
+.header-logo { display: flex; align-items: baseline; gap: 10px; }
+
+.header-logo .wordmark {
+  font-family: var(--font-display);
+  font-size: 1.55rem;
+  font-weight: 900;
+  color: var(--ink);
+  letter-spacing: -0.01em;
+  line-height: 1;
+}
+
+.header-logo .sub {
+  font-family: var(--font-body);
+  font-size: 0.62rem;
+  color: var(--ink-2);
+  font-weight: 600;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+}
+
+.header-status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--font-body);
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  color: var(--ink);
+  text-transform: uppercase;
+}
+
+.live-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--signal);
+  animation: pulse-dot 2.2s ease-in-out infinite;
+  flex-shrink: 0;
+}
+
+@keyframes pulse-dot {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50%      { opacity: 0.25; transform: scale(0.7); }
+}
+
+.header-meta {
+  margin-left: auto;
+  display: flex;
+  align-items: stretch;
+  gap: 0;
+}
+
+.meta-item {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 3px;
+  padding: 0 18px;
+  border-left: 1px solid var(--hair);
+}
+
+.meta-label {
+  font-size: 0.54rem;
+  text-transform: uppercase;
+  letter-spacing: 0.18em;
+  color: var(--ink-3);
+  font-weight: 700;
+}
+
+.meta-value {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  font-size: 0.82rem;
+  color: var(--ink);
+  font-weight: 500;
+}
+
+.countdown-val { font-family: var(--font-mono); font-weight: 600; }
+
+.header-nav a {
+  font-family: var(--font-body);
+  font-size: 0.68rem;
+  color: var(--ink);
+  text-decoration: none;
+  padding: 9px 16px;
+  border: 2px solid var(--ink);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  font-weight: 700;
+  transition: background 0.12s, color 0.12s;
+}
+
+.header-nav a:hover { background: var(--ink); color: var(--paper); }
+
+/* ── Refresh progress ────────────────────────────────────── */
+#countdown-bar {
+  height: 3px;
+  background: var(--paper);
+  flex-shrink: 0;
+  border-bottom: 1px solid var(--hair);
+}
+
+#countdown-fill {
+  height: 100%;
+  background: var(--ink);
+  width: 100%;
+  transition: width 1s linear;
+}
+
+/* ── Layout ──────────────────────────────────────────────── */
+main { display: flex; flex: 1; overflow: hidden; }
+
+/* ── Sidebar ─────────────────────────────────────────────── */
+#sidebar {
+  width: 340px;
+  min-width: 340px;
+  background: var(--paper);
+  border-right: 2px solid var(--ink);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.section-label {
+  font-family: var(--font-body);
+  font-size: 0.58rem;
+  text-transform: uppercase;
+  letter-spacing: 0.2em;
+  color: var(--ink-2);
+  font-weight: 700;
+}
+
+/* Stats — editorial block */
+.stats-panel { padding: 22px 22px 20px; border-bottom: 2px solid var(--ink); }
+
+.stat-hero { margin-top: 12px; }
+
+.stat-hero .stat-value {
+  font-family: var(--font-display);
+  font-size: 4.6rem;
+  font-weight: 900;
+  line-height: 0.82;
+  letter-spacing: -0.04em;
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+}
+
+.stat-hero .stat-label {
+  font-size: 0.6rem;
+  text-transform: uppercase;
+  letter-spacing: 0.2em;
+  color: var(--ink-2);
+  font-weight: 700;
+  margin-top: 8px;
+}
+
+.stat-sub {
+  display: flex;
+  margin-top: 20px;
+  border-top: 1px solid var(--hair);
+  padding-top: 16px;
+}
+
+.stat-sub .stat {
+  flex: 1;
+}
+.stat-sub .stat + .stat { border-left: 1px solid var(--hair); padding-left: 16px; }
+
+.stat-sub .stat-value {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: var(--ink);
+  line-height: 1.1;
+}
+
+.stat-sub .stat-label {
+  font-size: 0.52rem;
+  text-transform: uppercase;
+  letter-spacing: 0.16em;
+  color: var(--ink-3);
+  font-weight: 700;
+  margin-top: 6px;
+}
+
+/* Bus list header */
+.buses-header {
+  padding: 16px 22px 12px;
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  border-bottom: 1px solid var(--hair);
+  flex-shrink: 0;
+}
+
+.buses-header .count {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  color: var(--ink-2);
+  font-weight: 600;
+}
+
+/* Bus list */
+#bus-list-wrap {
+  flex: 1;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--ink-3) transparent;
+}
+#bus-list-wrap::-webkit-scrollbar { width: 5px; }
+#bus-list-wrap::-webkit-scrollbar-track { background: transparent; }
+#bus-list-wrap::-webkit-scrollbar-thumb { background: var(--ink-3); }
+
+#bus-list { list-style: none; }
+
+#bus-list li {
+  padding: 14px 22px 14px 18px;
+  border-bottom: 1px solid var(--hair);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  position: relative;
+  background: var(--paper);
+  transition: background 0.1s;
+  opacity: 0;
+  animation: row-in 0.32s ease forwards;
+}
+
+@keyframes row-in {
+  from { opacity: 0; transform: translateY(5px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+#bus-list li::before {
+  content: '';
+  position: absolute;
+  left: 0; top: 0; bottom: 0;
+  width: 0;
+  background: var(--ink);
+  transition: width 0.1s;
+}
+#bus-list li:hover { background: var(--paper-2); }
+#bus-list li:hover::before { width: 4px; }
+
+/* route bullet */
+.bullet {
+  width: 26px; height: 26px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: 0.62rem;
+  color: #fff;
+  border: 1.5px solid rgba(0,0,0,0.25);
+  letter-spacing: 0;
+}
+
+.bus-info { flex: 1; min-width: 0; }
+
+.bus-name {
+  font-family: var(--font-display);
+  font-size: 1.02rem;
+  font-weight: 800;
+  color: var(--ink);
+  letter-spacing: -0.01em;
+  line-height: 1;
+}
+
+.bus-route {
+  font-family: var(--font-body);
+  font-size: 0.68rem;
+  color: var(--ink-2);
+  margin-top: 5px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.bus-next-stop {
+  font-family: var(--font-body);
+  font-size: 0.72rem;
+  color: var(--ink-2);
+  margin-top: 4px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 200px;
+}
+.bus-next-stop .arrow { color: var(--ink-3); font-weight: 700; }
+
+.bus-right { text-align: right; flex-shrink: 0; }
+
+.bus-eta {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: var(--ink);
+  white-space: nowrap;
+  letter-spacing: -0.02em;
+}
+.bus-eta.arriving { color: var(--signal); font-weight: 600; }
+
+.bus-speed {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  font-size: 0.74rem;
+  color: var(--ink-3);
+  white-space: nowrap;
+}
+
+.empty-msg {
+  padding: 36px 22px;
+  font-family: var(--font-body);
+  font-size: 0.8rem;
+  color: var(--ink-3);
+  text-align: center;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  font-weight: 600;
+}
+
+/* Footer */
+#footer {
+  padding: 13px 22px;
+  border-top: 2px solid var(--ink);
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  color: var(--ink-2);
+  flex-shrink: 0;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+#footer.error { color: var(--signal); }
+
+/* ── Map ─────────────────────────────────────────────────── */
+#map { flex: 1; background: var(--paper); position: relative; }
+
+/* 3D buildings toggle — editorial chip overlaid on the map */
+#toggle-3d {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  z-index: 500;
+  font-family: var(--font-body);
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--ink);
+  background: var(--paper-2);
+  border: 2px solid var(--ink);
+  box-shadow: 4px 4px 0 rgba(17,17,15,0.14);
+  padding: 8px 12px;
+  cursor: pointer;
+  transition: background 0.12s, color 0.12s;
+}
+#toggle-3d:hover { background: var(--paper); }
+#toggle-3d[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
+
+.bus-marker { display: block; }
+.bus-marker-el { line-height: 0; cursor: pointer; }
+
+.maplibregl-ctrl-attrib { font-size: 0.6rem; background: rgba(250,248,242,0.82) !important; }
+.maplibregl-ctrl-attrib a { color: var(--ink-2); }
+
+/* MapLibre nav buttons → squared, inky to match the editorial chrome */
+.maplibregl-ctrl-group {
+  border: 2px solid var(--ink) !important;
+  border-radius: 0 !important;
+  box-shadow: 4px 4px 0 rgba(17,17,15,0.14) !important;
+  background: var(--paper-2);
+}
+.maplibregl-ctrl-group button { border-radius: 0 !important; }
+.maplibregl-ctrl-group button + button { border-top: 1px solid var(--hair) !important; }
+
+/* ── Popups ──────────────────────────────────────────────── */
+.maplibregl-popup-content {
+  background: var(--paper-2);
+  color: var(--ink);
+  border: 2px solid var(--ink);
+  border-radius: 0;
+  box-shadow: 7px 7px 0 rgba(17,17,15,0.16);
+  font-family: var(--font-body);
+  font-size: 0.82rem;
+  padding: 0;
+}
+.maplibregl-popup-tip { display: none; }
+.maplibregl-popup-close-button {
+  color: var(--ink-2);
+  font-size: 20px;
+  line-height: 1;
+  padding: 4px 9px 0 0;
+  background: transparent;
+}
+.maplibregl-popup-close-button:hover { background: transparent; color: var(--ink); }
+
+.pop {
+  min-width: 220px;
+}
+.pop-bar { height: 8px; }
+.pop-body { padding: 12px 14px 13px; }
+
+.pop-title {
+  font-family: var(--font-display);
+  font-size: 1.15rem;
+  font-weight: 800;
+  color: var(--ink);
+  letter-spacing: -0.01em;
+  line-height: 1;
+}
+
+.pop-route {
+  display: flex; align-items: center; gap: 8px;
+  margin-top: 9px;
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  font-weight: 700;
+  color: var(--ink-2);
+}
+.pop-route .bullet { width: 20px; height: 20px; font-size: 0.5rem; }
+
+.pop-meta {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  font-size: 0.72rem;
+  color: var(--ink-2);
+  margin-top: 9px;
+  display: flex;
+  gap: 14px;
+}
+
+.popup-eta { margin-top: 11px; border-top: 1px solid var(--hair); padding-top: 9px; }
+
+.popup-eta-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  padding: 3px 0;
+  font-size: 0.78rem;
+  gap: 14px;
+}
+.popup-eta-row .stop-nm { color: var(--ink-2); }
+.popup-eta-row .stop-t  {
+  color: var(--ink); font-weight: 600;
+  font-family: var(--font-mono); font-variant-numeric: tabular-nums;
+}
+
+.pop-stop-title {
+  font-family: var(--font-display);
+  font-size: 1.05rem;
+  font-weight: 800;
+  color: var(--ink);
+  letter-spacing: -0.01em;
+  line-height: 1.05;
+}
+.pop-empty {
+  margin-top: 9px;
+  font-size: 0.72rem;
+  color: var(--ink-3);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-weight: 600;
+}
+
+.arrival-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 0;
+  font-size: 0.78rem;
+  border-top: 1px solid var(--hair);
+}
+.arrival-row:first-of-type { border-top: none; }
+.arrival-row .bus-lbl { color: var(--ink); font-weight: 600; }
+
+.arrival-eta {
+  color: var(--ink);
+  font-weight: 600;
+  margin-left: auto;
+  white-space: nowrap;
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  font-size: 0.82rem;
+}
+.arrival-eta.arriving { color: var(--signal); }
+.header-status.stopped .live-dot { background: #b98024; animation: none; }
+.model-status { margin-top: 16px; font-size: 12px; line-height: 1.6; }
+.model-status p { margin: 4px 0; }
+</style>
+</head>
+<body>
+<header>
+  <div class="header-logo">
+    <a class="wordmark" href="/" style="color:inherit;text-decoration:none" title="Chris Liu portfolio">GT&nbsp;BUS</a>
+    <span class="sub">Transit Tracker</span>
+  </div>
+  <div class="header-status" id="collection-status">
+    <span class="live-dot"></span>
+    <span id="collection-label">Checking status</span>
+  </div>
+  <div class="header-meta">
+    <div class="meta-item">
+      <span class="meta-label">Updated</span>
+      <span class="meta-value" id="last-update">—</span>
+    </div>
+    <div class="meta-item">
+      <span class="meta-label">Next Refresh</span>
+      <span class="meta-value countdown-val"><span id="countdown">15</span>s</span>
+    </div>
+    <div class="meta-item header-nav" style="border-left:1px solid var(--hair)">
+      <a href="/bus/history/">History</a>
+    </div>
+  </div>
+</header>
+<div id="countdown-bar"><div id="countdown-fill"></div></div>
+<main>
+  <div id="sidebar">
+    <div class="stats-panel">
+      <div class="section-label">System Status</div>
+      <div class="stat-hero">
+        <div class="stat-value" id="stat-active">—</div>
+        <div class="stat-label">Active Buses</div>
+      </div>
+      <div class="stat-sub">
+        <div class="stat">
+          <div class="stat-value" id="stat-total">—</div>
+          <div class="stat-label">Records</div>
+        </div>
+        <div class="stat">
+          <div class="stat-value" id="stat-since">—</div>
+          <div class="stat-label">History Since</div>
+        </div>
+      </div>
+    </div>
+    <div class="model-status" style="padding:0 22px 16px" aria-live="polite">
+      <div class="section-label">Prediction Model</div>
+      <p id="model-status">Loading model status…</p>
+      <p id="collection-note"></p>
+    </div>
+    <div class="buses-header">
+      <span class="section-label">Departures</span>
+      <span class="count" id="bus-count"></span>
+    </div>
+    <div id="bus-list-wrap">
+      <ul id="bus-list"></ul>
+    </div>
+    <div id="footer">Auto-refreshing every 15s</div>
+  </div>
+  <div id="map">
+    <button id="toggle-3d" type="button" aria-pressed="false">3D&nbsp;Buildings</button>
+  </div>
+</main>
+
+<script>
+const API_BASE = 'https://bus-api.czliu.dev';
+const map = new maplibregl.Map({
+  container: 'map',
+  style: 'https://basemaps.cartocdn.com/gl/positron-gl-style/style.json',
+  center: [-84.3963, 33.7756],   // [lng, lat]
+  zoom: 15.2,
+  pitch: 52,                     // default to a tilted 3D view
+  minZoom: 10,
+  maxZoom: 19,
+});
+map.addControl(new maplibregl.NavigationControl({ showCompass: true }), 'top-right');
+
+// ── 3D buildings ─────────────────────────────────────────────
+const toggle3d = document.getElementById('toggle-3d');
+let buildings3dOn = true;   // enabled by default
+
+function applyBuildings3d() {
+  toggle3d.setAttribute('aria-pressed', String(buildings3dOn));
+  if (!map.getLayer('buildings-3d')) return;
+  map.setLayoutProperty('buildings-3d', 'visibility', buildings3dOn ? 'visible' : 'none');
+  // Hide Positron's flat building fills while extruded, or they paint over the 3D massing.
+  ['building', 'building-top'].forEach(id => {
+    if (map.getLayer(id)) map.setLayoutProperty(id, 'visibility', buildings3dOn ? 'none' : 'visible');
+  });
+}
+
+toggle3d.addEventListener('click', () => {
+  buildings3dOn = !buildings3dOn;
+  applyBuildings3d();
+  map.easeTo({
+    pitch: buildings3dOn ? 52 : 0,
+    zoom: buildings3dOn ? Math.max(map.getZoom(), 15.2) : map.getZoom(),
+    duration: 600,
+  });
+});
+
+const busMarkers = {};
+let lastData    = null;
+let tickTimer   = null;
+let secondsLeft = 15;
+const INTERVAL  = 15;
+
+// The vector layers (routes, stops) can only be added once the style has loaded;
+// data that arrives before then is stashed and flushed on 'load'.
+let mapReady      = false;
+let pendingRoutes = null;
+let pendingStops  = null;
+
+const emptyFC = () => ({ type: 'FeatureCollection', features: [] });
+
+// Recolor Positron's white/grey land, water and buildings to the paper palette
+// (instead of filtering the canvas, which yellow-washes everything like a highlighter).
+function paintPaperBasemap() {
+  const PAPER     = '#F2EFE6';   // land / background
+  const LAND_SOFT = 'rgba(224,218,204,0.45)';  // parks, landuse — faint warm
+  const WATER     = '#D2D8D2';   // muted warm grey-green
+  const BLDG      = '#E6E0D2';
+  const BLDG_TOP  = '#ECE6D8';
+  const set = (id, prop, val) => { try { if (map.getLayer(id)) map.setPaintProperty(id, prop, val); } catch (e) {} };
+
+  set('background', 'background-color', PAPER);
+  ['landcover', 'park_national_park', 'park_nature_reserve', 'landuse', 'landuse_residential']
+    .forEach(id => set(id, 'fill-color', LAND_SOFT));
+  set('water', 'fill-color', WATER);
+  set('building', 'fill-color', BLDG);
+  set('building-top', 'fill-color', BLDG_TOP);
+}
+
+map.on('load', () => {
+  mapReady = true;
+  paintPaperBasemap();
+
+  map.addSource('routes', { type: 'geojson', data: emptyFC() });
+  map.addLayer({
+    id: 'routes', type: 'line', source: 'routes',
+    layout: { 'line-cap': 'round', 'line-join': 'round' },
+    paint: { 'line-color': ['get', 'color'], 'line-width': 4, 'line-opacity': 0.9 },
+  });
+
+  map.addSource('stops', { type: 'geojson', data: emptyFC() });
+  map.addLayer({
+    id: 'stops', type: 'circle', source: 'stops',
+    paint: {
+      'circle-radius': 5,
+      'circle-color': '#FAF8F2',
+      'circle-stroke-color': ['get', 'color'],
+      'circle-stroke-width': 2.5,
+    },
+  });
+
+  map.on('click', 'stops', (e) => {
+    const f = e.features[0];
+    const [lon, lat] = f.geometry.coordinates;
+    showStopArrivals({
+      stop_id: f.properties.stop_id,
+      name: f.properties.name,
+      lat, lon,
+      route_color: f.properties.route_color,
+    });
+  });
+  map.on('mouseenter', 'stops', () => { map.getCanvas().style.cursor = 'pointer'; });
+  map.on('mouseleave', 'stops', () => { map.getCanvas().style.cursor = ''; });
+
+  // 3D building extrusions. Insert directly above Positron's flat building fills so
+  // the massing sits ON TOP of every road/bridge line (which come earlier in the
+  // stack) but still BELOW the place/road text labels, keeping names readable.
+  const layers = map.getStyle().layers;
+  const btIdx = layers.findIndex(l => l.id === 'building-top');
+  let beforeId;
+  if (btIdx >= 0 && layers[btIdx + 1]) beforeId = layers[btIdx + 1].id;
+  else { const s = layers.find(l => l.type === 'symbol'); beforeId = s && s.id; }
+  map.addLayer({
+    id: 'buildings-3d',
+    source: 'carto',
+    'source-layer': 'building',
+    type: 'fill-extrusion',
+    minzoom: 13,
+    filter: ['!=', ['get', 'hide_3d'], true],
+    paint: {
+      // Warm tan that darkens with height so the massing reads against the paper.
+      'fill-extrusion-color': [
+        'interpolate', ['linear'], ['coalesce', ['get', 'render_height'], 8],
+        0, '#E4DCC8', 40, '#D2C8AE', 120, '#BCB096',
+      ],
+      'fill-extrusion-height': ['coalesce', ['get', 'render_height'], 8],
+      'fill-extrusion-base':   ['coalesce', ['get', 'render_min_height'], 0],
+      'fill-extrusion-opacity': 0.95,
+      'fill-extrusion-vertical-gradient': true,
+    },
+  }, beforeId);
+
+  applyBuildings3d();   // sync initial visibility (default: on)
+
+  if (pendingRoutes) { setRouteData(pendingRoutes); pendingRoutes = null; }
+  if (pendingStops)  { setStopData(pendingStops);   pendingStops  = null; }
+});
+
+function busSvg(color) {
+  // Solid geometric "house" chip pointing "up" (north). Heading is applied via the
+  // marker's setRotation() with rotationAlignment:'map', so it stays geographically
+  // correct as the map is rotated/pitched in 3D.
+  return `<svg class="bus-marker" width="30" height="30" viewBox="-15 -15 30 30" xmlns="http://www.w3.org/2000/svg">
+      <polygon points="-8,9 8,9 8,-4 0,-12 -8,-4"
+        fill="${color}" stroke="#11110F" stroke-width="2" stroke-linejoin="round"/>
+      <circle cx="0" cy="2" r="2.4" fill="#FAF8F2"/>
+    </svg>`;
+}
+
+// GeoJSON helpers (server sends polyline coords as [lat, lng]; MapLibre wants [lng, lat]).
+function setRouteData(routes) {
+  map.getSource('routes').setData({
+    type: 'FeatureCollection',
+    features: routes
+      .filter(r => r.coords && r.coords.length > 1)
+      .map(r => ({
+        type: 'Feature',
+        properties: { color: r.color || '#888888' },
+        geometry: { type: 'LineString', coordinates: r.coords.map(c => [c[1], c[0]]) },
+      })),
+  });
+}
+function setRoutes(routes) {
+  if (!mapReady) { pendingRoutes = routes; return; }
+  setRouteData(routes);
+}
+
+function setStopData(stops) {
+  map.getSource('stops').setData({
+    type: 'FeatureCollection',
+    features: stops.map(s => ({
+      type: 'Feature',
+      properties: {
+        stop_id: s.stop_id,
+        name: s.name,
+        route_color: s.route_color || '#11110F',
+        color: s.route_color || '#11110F',
+      },
+      geometry: { type: 'Point', coordinates: [s.lon, s.lat] },
+    })),
+  });
+}
+function setStops(stops) {
+  if (!mapReady) { pendingStops = stops; return; }
+  setStopData(stops);
+}
+
+function routeCode(name, id) {
+  if (!name) return String(id || '?').slice(0, 2);
+  const words = name.replace(/route/ig, '').trim().split(/\s+/).filter(Boolean);
+  if (words.length === 0) return String(id || '?').slice(0, 2);
+  if (words.length === 1) return words[0].slice(0, 2).toUpperCase();
+  return words.map(w => w[0]).join('').slice(0, 3).toUpperCase();
+}
+
+function bulletHtml(color, code, extraClass) {
+  const tc = isLight(color) ? '#11110F' : '#ffffff';
+  return `<span class="bullet ${extraClass || ''}" style="background:${color};color:${tc}">${code}</span>`;
+}
+
+function fmtEta(s) {
+  if (s == null) return '—';
+  if (s < 30) return 'NOW';
+  const m = Math.floor(s / 60), sec = s % 60;
+  return m > 0 ? `${m}:${String(sec).padStart(2,'0')}` : `0:${String(sec).padStart(2,'0')}`;
+}
+
+function fmtCount(n) {
+  if (n >= 1e6) return (n / 1e6).toFixed(1) + 'M';
+  if (n >= 1e3) return (n / 1e3).toFixed(1) + 'K';
+  return String(n);
+}
+
+function parseDate(iso) {
+  if (!iso) return null;
+  const d = new Date(iso);
+  return isNaN(d) ? null : d;
+}
+
+function fmtTime(iso) {
+  const d = parseDate(iso);
+  return d ? d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false }) : '—';
+}
+
+function fmtDateTime(iso) {
+  const d = parseDate(iso);
+  return d ? d.toLocaleDateString([], { month: 'short', day: 'numeric' })
+    + ' ' + d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false }) : '—';
+}
+
+function isLight(hex) {
+  const c = (hex || '#888888').replace('#','');
+  const r = parseInt(c.substr(0,2),16);
+  const g = parseInt(c.substr(2,2),16);
+  const b = parseInt(c.substr(4,2),16);
+  return (r*299 + g*587 + b*114) / 1000 > 140;
+}
+
+function showStopArrivals(stop) {
+  const arrivals = [];
+  if (lastData) {
+    lastData.vehicles.forEach(v => {
+      if (!v.eta || !v.eta.stops_ahead) return;
+      const hop = v.eta.stops_ahead.find(h => h.stop_id === stop.stop_id);
+      if (hop) arrivals.push({
+        vehicle_name: v.vehicle_name,
+        route_name:   v.route_name || ('Route ' + v.route_id),
+        route_id:     v.route_id,
+        route_color:  v.route_color || '#888',
+        eta_seconds:  hop.eta_seconds,
+      });
+    });
+    arrivals.sort((a, b) => a.eta_seconds - b.eta_seconds);
+  }
+
+  const color = stop.route_color || '#11110F';
+  let body = `<div class="pop-stop-title">${stop.name}</div>`;
+  if (arrivals.length === 0) {
+    body += '<div class="pop-empty">No buses in next 5 stops</div>';
+  } else {
+    body += '<div style="margin-top:10px">' + arrivals.map(a => {
+      const arr = a.eta_seconds < 30;
+      return `<div class="arrival-row">
+        ${bulletHtml(a.route_color, routeCode(a.route_name, a.route_id))}
+        <span class="bus-lbl">Bus ${a.vehicle_name}</span>
+        <span class="arrival-eta ${arr ? 'arriving' : ''}">${fmtEta(a.eta_seconds)}</span>
+      </div>`;
+    }).join('') + '</div>';
+  }
+  const html = `<div class="pop"><div class="pop-bar" style="background:${color}"></div><div class="pop-body">${body}</div></div>`;
+  new maplibregl.Popup({ offset: 14, maxWidth: '280px' })
+    .setLngLat([stop.lon, stop.lat])
+    .setHTML(html)
+    .addTo(map);
+}
+
+async function loadStops() {
+  try {
+    const res = await fetch(API_BASE + '/api/stops');
+    const d = await res.json();
+    setStops(d.stops);
+  } catch(e) { console.error('Failed to load stops:', e); }
+}
+
+async function refresh() {
+  const footer = document.getElementById('footer');
+  try {
+    const res = await fetch(API_BASE + '/api/live');
+    if (!res.ok) throw new Error(res.statusText);
+    const data = await res.json();
+    lastData = data;
+
+    document.getElementById('stat-active').textContent = data.stats.active_buses;
+    document.getElementById('stat-total').textContent = fmtCount(data.stats.total_records);
+    document.getElementById('stat-since').textContent = fmtDateTime(data.stats.collecting_since);
+    document.getElementById('last-update').textContent = fmtDateTime(data.stats.last_update);
+    const collecting = data.stats.collecting === true;
+    const liveStatus = data.live?.status || 'unavailable';
+    const live = liveStatus === 'live';
+    const statusLabels = {live: 'Live', delayed: 'Feed delayed', connecting: 'Connecting', unavailable: 'Feed unavailable'};
+    document.getElementById('collection-status').classList.toggle('stopped', !live);
+    document.getElementById('collection-label').textContent = statusLabels[liveStatus] || 'Feed unavailable';
+    document.getElementById('collection-note').textContent = collecting
+      ? 'Live positions are being recorded.'
+      : 'Live positions and predictions refresh every 15 seconds. History recording is paused; saved trips remain available.';
+    const model = data.model || {};
+    document.getElementById('model-status').textContent = model.available
+      ? `Updated ${fmtDateTime(model.trained_at)} · Data through ${fmtDateTime(model.data_through)} · Held-out average error ${Number(model.mae_seconds).toFixed(1)}s`
+      : 'Prediction model unavailable.';
+
+    setRoutes(data.routes);
+
+    const activeIds = new Set(data.vehicles.map(v => v.vehicle_id));
+    Object.keys(busMarkers).forEach(id => {
+      if (!activeIds.has(parseInt(id))) {
+        busMarkers[id].remove();
+        delete busMarkers[id];
+      }
+    });
+
+    const busList = document.getElementById('bus-list');
+    busList.innerHTML = '';
+    document.getElementById('bus-count').textContent =
+      data.vehicles.length ? `${data.vehicles.length} ${live ? 'running' : 'last seen'}` : '';
+
+    if (data.vehicles.length === 0) {
+      const emptyText = live ? 'No buses reported by the live feed'
+        : liveStatus === 'connecting' ? 'Connecting to the live bus feed…'
+        : 'Live feed temporarily unavailable. Retrying…';
+      busList.innerHTML = `<li class="empty-msg">${emptyText}</li>`;
+    }
+
+    data.vehicles.forEach((v, i) => {
+      const color = v.route_color || '#888888';
+      const lngLat = [v.longitude, v.latitude];
+      const speedMph = ((v.speed || 0) * 0.621371).toFixed(1);
+      const routeName = v.route_name || ('Route ' + v.route_id);
+      const code = routeCode(v.route_name, v.route_id);
+
+      let etaSection = '';
+      if (v.eta && v.eta.stops_ahead && v.eta.stops_ahead.length) {
+        const rows = v.eta.stops_ahead.map(s =>
+          `<div class="popup-eta-row"><span class="stop-nm">${s.stop_name}</span><span class="stop-t">${fmtEta(s.eta_seconds)}</span></div>`
+        ).join('');
+        etaSection = `<div class="popup-eta">${rows}</div>`;
+      }
+      const popupHtml = `<div class="pop">
+        <div class="pop-bar" style="background:${color}"></div>
+        <div class="pop-body">
+          <div class="pop-title">Bus ${v.vehicle_name}</div>
+          <div class="pop-route">${bulletHtml(color, code)} ${routeName}</div>
+          <div class="pop-meta"><span>${speedMph} MPH</span><span>HDG ${v.heading || 0}°</span></div>
+          ${etaSection}
+        </div></div>`;
+
+      if (busMarkers[v.vehicle_id]) {
+        const m = busMarkers[v.vehicle_id];
+        m.setLngLat(lngLat);
+        m.getElement().innerHTML = busSvg(color);
+        m.setRotation(v.heading || 0);
+        m.getPopup().setHTML(popupHtml);
+      } else {
+        const el = document.createElement('div');
+        el.className = 'bus-marker-el';
+        el.innerHTML = busSvg(color);
+        const popup = new maplibregl.Popup({ offset: 16, maxWidth: '280px' }).setHTML(popupHtml);
+        busMarkers[v.vehicle_id] = new maplibregl.Marker({
+          element: el,
+          anchor: 'center',
+          rotation: v.heading || 0,
+          rotationAlignment: 'map',
+          pitchAlignment: 'map',
+        })
+          .setLngLat(lngLat)
+          .setPopup(popup)
+          .addTo(map);
+      }
+
+      const li = document.createElement('li');
+      li.style.animationDelay = Math.min(i * 28, 400) + 'ms';
+
+      const arr = v.eta && v.eta.eta_seconds != null && v.eta.eta_seconds < 30;
+      const etaRight = v.eta
+        ? `<div class="bus-right"><div class="bus-eta ${arr ? 'arriving' : ''}">${fmtEta(v.eta.eta_seconds)}</div></div>`
+        : `<div class="bus-right"><div class="bus-speed">${speedMph} mph</div></div>`;
+      const nextStopLine = v.eta
+        ? `<div class="bus-next-stop"><span class="arrow">→</span> ${v.eta.next_stop_name}</div>`
+        : '';
+      li.innerHTML = `
+        ${bulletHtml(color, code)}
+        <div class="bus-info">
+          <div class="bus-name">Bus ${v.vehicle_name}</div>
+          <div class="bus-route">${routeName}</div>
+          ${nextStopLine}
+        </div>
+        ${etaRight}
+      `;
+      li.addEventListener('click', () => {
+        map.flyTo({ center: lngLat, zoom: 16 });
+        const m = busMarkers[v.vehicle_id];
+        if (m && !m.getPopup().isOpen()) m.togglePopup();
+      });
+      busList.appendChild(li);
+    });
+
+    footer.classList.remove('error');
+    footer.textContent = live
+      ? (collecting ? 'Live · History recording enabled' : 'Live · History recording paused')
+      : (liveStatus === 'delayed' ? 'Feed delayed · Predictions paused' : 'Connecting to live feed · Retrying');
+    footer.classList.toggle('error', !live);
+  } catch (e) {
+    footer.classList.add('error');
+    footer.textContent = 'Connection error — retrying…';
+    document.getElementById('collection-status').classList.add('stopped');
+    document.getElementById('collection-label').textContent = 'Connection lost';
+    Object.keys(busMarkers).forEach(id => { busMarkers[id].remove(); delete busMarkers[id]; });
+    document.getElementById('stat-active').textContent = '—';
+    document.getElementById('bus-count').textContent = '';
+    document.getElementById('bus-list').innerHTML = '<li class="empty-msg">Live view temporarily unavailable. Retrying…</li>';
+  }
+
+  resetCountdown();
+}
+
+function resetCountdown() {
+  secondsLeft = INTERVAL;
+  clearInterval(tickTimer);
+  document.getElementById('countdown-fill').style.width = '100%';
+  tickTimer = setInterval(() => {
+    secondsLeft--;
+    document.getElementById('countdown').textContent = secondsLeft;
+    const pct = (secondsLeft / INTERVAL) * 100;
+    document.getElementById('countdown-fill').style.width = pct + '%';
+    if (secondsLeft <= 0) {
+      clearInterval(tickTimer);
+      refresh();
+    }
+  }, 1000);
+}
+
+refresh();
+loadStops();
+</script>
+</body>
+</html>

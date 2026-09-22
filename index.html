@@ -600,10 +600,10 @@
   }
   // ── project specimens (grouped by theme into the merged project nodes below) ──
   const SPEC={
-    bus:{ name:"GT Bus Arrival Prediction", fig:"2", date:"Apr–May 2026", live:true, svg:FIG.route,
-      desc:`I collected <b>1M+ GPS observations</b> from Georgia Tech's public transit API by polling every 15&nbsp;seconds for about a month. I labeled next-stop arrivals with geospatial buffering, engineered route-progress, headway, speed, traffic, and time features, and trained an <b>XGBoost</b> model on a chronological split. The model now powers a live dashboard for next-stop arrival estimates and historical route behavior.`,
-      tags:["Python","XGBoost","Pandas","Geospatial","Vultr"],
-      links:`<a href="http://108.61.220.216:8080/">Live demo ↗</a>` },
+    bus:{ name:"GT Bus Arrival Prediction", fig:"2", date:"May–Sep 2026", live:true, svg:FIG.route,
+      desc:`I processed <b>3.47 million GPS observations</b> from Georgia Tech's public transit API into <b>3.16 million labeled arrival examples</b>. Using 14 position, motion, time, and stop-context features, I trained a <b>histogram gradient-boosted regression model</b> that achieved <b>68.8-second mean absolute error</b> on a 100,000-example chronological holdout—43.8% below a per-stop median baseline. The dashboard serves live positions and next-stop predictions every 15 seconds, independently of historical recording.`,
+      tags:["Python","scikit-learn","Pandas","Geospatial","Vultr"],
+      links:`<a href="/bus/">Live demo ↗</a><a href="/bus/history/">Trip history ↗</a>` },
     sym:{ name:"Evolutionary Symbolic Regression", fig:"3", date:"Aug 2025–May 2026", svg:FIG.tree,
       desc:`A GPU-accelerated <b>genetic-programming</b> experiment for evolving interpretable trading rules over intraday cryptocurrency data. I built a stack-machine tree evaluator, CUDA&nbsp;/&nbsp;CuPy scoring path, Binance-to-Parquet data pipeline, multi-timeframe feature generation, and out-of-sample backtesting tools for tracking P&amp;L, drawdown, and rolling Sharpe.`,
       tags:["DEAP","CuPy","CUDA","NumPy","Parquet"],

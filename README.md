@@ -70,3 +70,14 @@ for rich link previews on LinkedIn/Twitter. (SVG isn't supported as an OG image 
 - The Desmos API key in `index.html` is a public, domain-embeddable key — safe to commit.
 - Content is kept to claims that are defensible; see the résumé content bank for the
   source of truth.
+
+## Bus dashboard
+
+- `/bus/` serves the live bus map; `/bus/history/` serves searchable archived trips.
+- Both pages are static GitHub Pages assets. API calls use `https://bus-api.czliu.dev`.
+- The API runs on Vultr behind Caddy HTTPS, with CORS allowing `https://czliu.dev`.
+- The Python model, database, and volatile live-feed cache remain on the server.
+- Live positions refresh every 15 seconds; historical recording is independently disabled.
+- The portfolio project card links to the dashboard and reflects the September 2026 evaluation.
+
+For local UI previews, the API accepts only the production origin; use mocked API responses or an explicit temporary development CORS configuration. Do not weaken production CORS for a preview.

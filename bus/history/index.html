@@ -1,0 +1,550 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GT Bus — History</title>
+<link rel="canonical" href="https://czliu.dev/bus/history/">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700;800;900&family=Archivo+Expanded:wght@600;700;800;900&family=Spline+Sans+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --paper:   #F2EFE6;
+  --paper-2: #FAF8F2;
+  --ink:     #11110F;
+  --ink-2:   #57564E;
+  --ink-3:   #908E83;
+  --hair:    rgba(17,17,15,0.12);
+  --signal:  #E3120B;
+  --font-display: 'Archivo Expanded', 'Archivo', sans-serif;
+  --font-body:    'Archivo', sans-serif;
+  --font-mono:    'Spline Sans Mono', monospace;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: var(--font-body);
+  background: var(--paper);
+  color: var(--ink);
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ── Header ─────────────────────────────────────────────── */
+header {
+  background: var(--paper);
+  border-bottom: 2px solid var(--ink);
+  padding: 0 24px;
+  height: 64px;
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  flex-shrink: 0;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+
+.header-logo { display: flex; align-items: baseline; gap: 10px; }
+.header-logo .wordmark {
+  font-family: var(--font-display);
+  font-size: 1.55rem;
+  font-weight: 900;
+  color: var(--ink);
+  letter-spacing: -0.01em;
+  line-height: 1;
+}
+.header-logo .sub {
+  font-family: var(--font-body);
+  font-size: 0.62rem;
+  color: var(--ink-2);
+  font-weight: 600;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+}
+
+.header-page {
+  font-family: var(--font-body);
+  font-size: 0.66rem;
+  color: var(--ink);
+  text-transform: uppercase;
+  letter-spacing: 0.2em;
+  font-weight: 700;
+  padding-left: 18px;
+  border-left: 1px solid var(--hair);
+}
+
+.header-nav { margin-left: auto; }
+.header-nav a {
+  font-family: var(--font-body);
+  font-size: 0.68rem;
+  color: var(--ink);
+  text-decoration: none;
+  padding: 9px 16px;
+  border: 2px solid var(--ink);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  font-weight: 700;
+  transition: background 0.12s, color 0.12s;
+}
+.header-nav a:hover { background: var(--ink); color: var(--paper); }
+
+/* ── Container ───────────────────────────────────────────── */
+.container {
+  max-width: 1340px;
+  margin: 0 auto;
+  padding: 28px 24px 40px;
+  width: 100%;
+  flex: 1;
+}
+
+/* ── Filters ─────────────────────────────────────────────── */
+.filters {
+  background: var(--paper-2);
+  border: 2px solid var(--ink);
+  padding: 20px 22px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 22px;
+  align-items: flex-end;
+  margin-bottom: 22px;
+}
+
+.field { display: flex; flex-direction: column; gap: 7px; }
+
+.field label,
+.filters-right label {
+  font-family: var(--font-body);
+  font-size: 0.54rem;
+  text-transform: uppercase;
+  letter-spacing: 0.18em;
+  color: var(--ink-2);
+  font-weight: 700;
+}
+
+.field select,
+.field input {
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid var(--ink);
+  color: var(--ink);
+  border-radius: 0;
+  padding: 6px 2px;
+  font-family: var(--font-body);
+  font-size: 0.86rem;
+  font-weight: 600;
+  outline: none;
+  min-width: 150px;
+}
+.field input[type="datetime-local"] { font-family: var(--font-mono); font-size: 0.78rem; }
+.field select:focus,
+.field input:focus { border-bottom-color: var(--signal); }
+.field select option { background: var(--paper-2); }
+
+.btn {
+  padding: 9px 18px;
+  border-radius: 0;
+  border: 2px solid var(--ink);
+  cursor: pointer;
+  font-family: var(--font-body);
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  transition: background 0.12s, color 0.12s;
+  background: transparent;
+  color: var(--ink);
+}
+.btn-solid { background: var(--ink); color: var(--paper); }
+.btn-solid:hover { background: var(--signal); border-color: var(--signal); }
+.btn-outline:hover { background: var(--ink); color: var(--paper); }
+.btn:disabled { opacity: 0.3; cursor: default; }
+.btn:disabled:hover { background: transparent; color: var(--ink); }
+
+.filters-right { margin-left: auto; display: flex; flex-direction: column; gap: 7px; }
+.presets { display: flex; gap: 0; }
+
+.preset-btn {
+  padding: 8px 14px;
+  border: 2px solid var(--ink);
+  border-left-width: 0;
+  background: transparent;
+  color: var(--ink);
+  font-family: var(--font-mono);
+  font-size: 0.74rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.12s, color 0.12s;
+}
+.presets .preset-btn:first-child { border-left-width: 2px; }
+.preset-btn:hover { background: var(--ink); color: var(--paper); }
+
+/* ── Summary bar ─────────────────────────────────────────── */
+#summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 14px;
+  font-family: var(--font-body);
+  font-size: 0.82rem;
+  color: var(--ink-2);
+  font-weight: 600;
+  flex-wrap: wrap;
+  gap: 10px;
+  min-height: 30px;
+}
+#summary strong { color: var(--ink); font-weight: 800; font-family: var(--font-mono); }
+#summary .err { color: var(--signal); }
+
+/* ── Table ───────────────────────────────────────────────── */
+.table-wrap {
+  overflow-x: auto;
+  border: 2px solid var(--ink);
+  background: var(--paper-2);
+}
+
+table { width: 100%; border-collapse: collapse; font-size: 0.82rem; }
+
+thead { background: var(--paper); position: sticky; top: 64px; z-index: 1; }
+
+th {
+  padding: 12px 16px;
+  text-align: left;
+  font-family: var(--font-body);
+  font-size: 0.54rem;
+  text-transform: uppercase;
+  letter-spacing: 0.16em;
+  color: var(--ink-2);
+  border-bottom: 2px solid var(--ink);
+  white-space: nowrap;
+  font-weight: 700;
+}
+
+td {
+  padding: 11px 16px;
+  border-bottom: 1px solid var(--hair);
+  white-space: nowrap;
+}
+tr:last-child td { border-bottom: none; }
+tr:hover td { background: var(--paper); }
+
+.td-time {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  font-size: 0.76rem;
+  color: var(--ink-2);
+}
+.td-bus {
+  font-family: var(--font-display);
+  font-size: 0.88rem;
+  font-weight: 800;
+  color: var(--ink);
+}
+
+.route-cell { display: flex; align-items: center; gap: 9px; }
+.bullet {
+  width: 22px; height: 22px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: 0.52rem;
+  color: #fff;
+  border: 1.5px solid rgba(0,0,0,0.25);
+}
+.route-name {
+  font-family: var(--font-body);
+  font-size: 0.74rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--ink);
+}
+
+.td-coord {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  color: var(--ink-2);
+  font-size: 0.76rem;
+}
+.td-num {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  font-size: 0.8rem;
+  color: var(--ink);
+}
+
+.empty {
+  text-align: center;
+  padding: 56px;
+  color: var(--ink-3);
+  font-family: var(--font-body);
+  font-size: 0.78rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  font-weight: 600;
+}
+
+/* ── Pagination ──────────────────────────────────────────── */
+#pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  padding: 24px 0 0;
+}
+#page-info {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  font-size: 0.74rem;
+  color: var(--ink-2);
+  font-weight: 600;
+  min-width: 120px;
+  text-align: center;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+</style>
+</head>
+<body>
+<header>
+  <div class="header-logo">
+    <span class="wordmark">GT&nbsp;BUS</span>
+    <span class="sub">Transit Tracker</span>
+  </div>
+  <span class="header-page">History</span>
+  <div class="header-nav"><a href="/bus/">Live Map</a></div>
+</header>
+
+<div class="container">
+  <div class="filters">
+    <div class="field">
+      <label>Route</label>
+      <select id="f-route"><option value="">All routes</option></select>
+    </div>
+    <div class="field">
+      <label>Bus</label>
+      <select id="f-vehicle"><option value="">All buses</option></select>
+    </div>
+    <div class="field">
+      <label>Start (UTC)</label>
+      <input type="datetime-local" id="f-start" step="1">
+    </div>
+    <div class="field">
+      <label>End (UTC)</label>
+      <input type="datetime-local" id="f-end" step="1">
+    </div>
+    <div class="field">
+      <label>Page size</label>
+      <select id="f-limit">
+        <option value="200">200</option>
+        <option value="500" selected>500</option>
+        <option value="2000">2000</option>
+      </select>
+    </div>
+    <div style="display:flex;gap:10px;align-items:flex-end">
+      <button class="btn btn-solid" onclick="query(0)">Search</button>
+      <button class="btn btn-outline" onclick="reset()">Reset</button>
+    </div>
+    <div class="filters-right">
+      <label>Quick range</label>
+      <div class="presets">
+        <button class="preset-btn" onclick="preset(1)">1h</button>
+        <button class="preset-btn" onclick="preset(6)">6h</button>
+        <button class="preset-btn" onclick="preset(24)">24h</button>
+        <button class="preset-btn" onclick="preset(168)">7d</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="summary">
+    <span>Run a search to load records.</span>
+  </div>
+
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Collected (UTC)</th>
+          <th>Bus</th>
+          <th>Route</th>
+          <th>Latitude</th>
+          <th>Longitude</th>
+          <th>Heading</th>
+          <th>Speed (mph)</th>
+        </tr>
+      </thead>
+      <tbody id="tbody"></tbody>
+    </table>
+  </div>
+
+  <div id="pagination"></div>
+</div>
+
+<script>
+const API_BASE = 'https://bus-api.czliu.dev';
+let lastParams = {};
+let currentOffset = 0;
+let totalRecords = 0;
+
+function isLight(hex) {
+  const c = (hex || '#888888').replace('#','');
+  const r = parseInt(c.substr(0,2),16);
+  const g = parseInt(c.substr(2,2),16);
+  const b = parseInt(c.substr(4,2),16);
+  return (r*299 + g*587 + b*114) / 1000 > 140;
+}
+
+function routeCode(name, id) {
+  if (!name) return String(id || '?').slice(0, 2);
+  const words = name.replace(/route/ig, '').trim().split(/\s+/).filter(Boolean);
+  if (words.length === 0) return String(id || '?').slice(0, 2);
+  if (words.length === 1) return words[0].slice(0, 2).toUpperCase();
+  return words.map(w => w[0]).join('').slice(0, 3).toUpperCase();
+}
+
+async function loadFilters() {
+  try {
+    const res = await fetch(API_BASE + '/api/history?limit=1');
+    if (!res.ok) throw new Error(res.statusText);
+    const d = await res.json();
+    const rSel = document.getElementById('f-route');
+    d.routes.forEach(r => {
+      const o = document.createElement('option');
+      o.value = r.route_id; o.textContent = r.description;
+      rSel.appendChild(o);
+    });
+    const vSel = document.getElementById('f-vehicle');
+    d.vehicles.forEach(v => {
+      const o = document.createElement('option');
+      o.value = v.vehicle_id; o.textContent = v.vehicle_name;
+      vSel.appendChild(o);
+    });
+  } catch(e) { console.error(e); }
+}
+
+function buildParams(offset) {
+  const p = new URLSearchParams();
+  const route   = document.getElementById('f-route').value;
+  const vehicle = document.getElementById('f-vehicle').value;
+  const start   = document.getElementById('f-start').value;
+  const end     = document.getElementById('f-end').value;
+  const limit   = document.getElementById('f-limit').value;
+  if (route)   p.set('route_id',   route);
+  if (vehicle) p.set('vehicle_id', vehicle);
+  if (start)   p.set('start', new Date(start).toISOString());
+  if (end)     p.set('end',   new Date(end).toISOString());
+  p.set('limit',  limit);
+  p.set('offset', offset);
+  return p;
+}
+
+async function query(offset) {
+  currentOffset = offset;
+  const params = buildParams(offset);
+  lastParams = Object.fromEntries(params);
+
+  document.getElementById('summary').innerHTML = '<span>Loading…</span>';
+  document.getElementById('tbody').innerHTML = '';
+  document.getElementById('pagination').innerHTML = '';
+
+  try {
+    const res = await fetch(API_BASE + '/api/history?' + params.toString());
+    if (!res.ok) throw new Error(res.statusText);
+    const d = await res.json();
+    totalRecords = d.total;
+    renderTable(d);
+    renderPagination(d);
+    const exportBtn = d.total > 0
+      ? `<button class="btn btn-outline" onclick="exportCsv()" style="padding:6px 14px;font-size:0.62rem">Download CSV</button>`
+      : '';
+    document.getElementById('summary').innerHTML =
+      `<span>Showing <strong>${(d.offset + 1).toLocaleString()}–${Math.min(d.offset + d.records.length, d.total).toLocaleString()}</strong>
+       of <strong>${d.total.toLocaleString()}</strong> records</span> ${exportBtn}`;
+  } catch(e) {
+    document.getElementById('summary').innerHTML = '<span class="err">Error loading data.</span>';
+  }
+}
+
+function renderTable(d) {
+  const tbody = document.getElementById('tbody');
+  if (d.records.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="7" class="empty">No records found</td></tr>';
+    return;
+  }
+  tbody.innerHTML = d.records.map(r => {
+    const color = r.route_color || '#888888';
+    const tc = isLight(color) ? '#11110F' : '#ffffff';
+    const code = routeCode(r.route_name, r.route_id);
+    const speedMph = ((r.speed || 0) * 0.621371).toFixed(1);
+    const ts = r.collected_at ? r.collected_at.replace('T', ' ').substring(0, 19) : '—';
+    return `<tr>
+      <td class="td-time">${ts}</td>
+      <td class="td-bus">${r.vehicle_name || r.vehicle_id}</td>
+      <td><div class="route-cell">
+        <span class="bullet" style="background:${color};color:${tc}">${code}</span>
+        <span class="route-name">${r.route_name || ('Route ' + r.route_id)}</span>
+      </div></td>
+      <td class="td-coord">${r.latitude.toFixed(6)}</td>
+      <td class="td-coord">${r.longitude.toFixed(6)}</td>
+      <td class="td-num">${r.heading ?? '—'}°</td>
+      <td class="td-num">${speedMph}</td>
+    </tr>`;
+  }).join('');
+}
+
+function renderPagination(d) {
+  const limit = d.limit;
+  const total = d.total;
+  const offset = d.offset;
+  const totalPages = Math.ceil(total / limit);
+  const currentPage = Math.floor(offset / limit) + 1;
+
+  if (totalPages <= 1) return;
+
+  const pag = document.getElementById('pagination');
+  const prev = `<button class="btn btn-outline" ${currentPage === 1 ? 'disabled' : ''} onclick="query(${(currentPage-2)*limit})">← Prev</button>`;
+  const next = `<button class="btn btn-outline" ${currentPage === totalPages ? 'disabled' : ''} onclick="query(${currentPage*limit})">Next →</button>`;
+  pag.innerHTML = `${prev}<span id="page-info">Page ${currentPage} / ${totalPages}</span>${next}`;
+}
+
+function exportCsv() {
+  const p = buildParams(0);
+  p.set('limit', 100000);
+  p.delete('offset');
+  window.location = API_BASE + '/api/export.csv?' + p.toString();
+}
+
+function preset(hours) {
+  const now = new Date();
+  const start = new Date(now - hours * 3600000);
+  document.getElementById('f-end').value   = toLocal(now);
+  document.getElementById('f-start').value = toLocal(start);
+  query(0);
+}
+
+function toLocal(d) {
+  return new Date(d - d.getTimezoneOffset() * 60000).toISOString().slice(0, 19);
+}
+
+function reset() {
+  document.getElementById('f-route').value   = '';
+  document.getElementById('f-vehicle').value = '';
+  document.getElementById('f-start').value   = '';
+  document.getElementById('f-end').value     = '';
+  document.getElementById('tbody').innerHTML = '';
+  document.getElementById('summary').innerHTML = '<span>Run a search to load records.</span>';
+  document.getElementById('pagination').innerHTML = '';
+}
+
+loadFilters();
+query(0);
+</script>
+</body>
+</html>
